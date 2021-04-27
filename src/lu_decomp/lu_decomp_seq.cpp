@@ -18,30 +18,23 @@ void printMatrix(double* matrix, size_t size) {
   }
 }
 
-// Retirada da net, falta implementar a do professor
-void seqLU(double* opMatrix, double* lMatrix, double* uMatrix, size_t size) {
-  int i = 0, j = 0, k = 0;
-  for (i = 0; i < size; i++) {
-    for (j = 0; j < size; j++) {
-      if (j < i)
-        lMatrix[j*size + i] = 0;
-      else {
-        lMatrix[j*size + i] = opMatrix[j*size + i];
-        for (k = 0; k < i; k++) {
-          lMatrix[j*size + i] = lMatrix[j*size + i] - lMatrix[j*size + k] * uMatrix[k*size + i];
-        }
-      }
+// Falta extrair a L e a U do resultado
+void seqLUClass(double* opMatrix, double* resMatrix, size_t size) {
+  size_t k = 0;
+
+  memcpy(resMatrix, opMatrix, size * size * sizeof(double));
+
+  for(size_t k = 0;resMatrix[k * size + k] != 0 && k < size; k++ ) {
+    for (size_t i = k+1; i < size; i++)
+    {
+      resMatrix[i*size + k] /= resMatrix[k * size + k]; 
     }
-    for (j = 0; j < size; j++) {
-      if (j < i)
-        uMatrix[i*size + j] = 0;
-      else if (j == i)
-        uMatrix[i*size + j] = 1;
-      else {
-        uMatrix[i*size + j]  = opMatrix[i*size + j]  / lMatrix[i*size + i] ;
-        for (k = 0; k < i; k++) {
-          uMatrix[i*size + j]  = uMatrix[i*size + j]  - ((lMatrix[i*size + k]  * uMatrix[k*size + j] ) / lMatrix[i*size + i] );
-        }
+    
+    for (size_t i = k+1; i < size; i++)
+    {
+      for (size_t j = k+1; j < size; j++)
+      {
+        resMatrix[i*size + j] -= resMatrix[i * size + k] * resMatrix[k*size + j]; 
       }
     }
   }
@@ -70,12 +63,14 @@ int main(int argc, char* argv[]) {
   double* opMatrix = (double*)malloc(MATRIX_SIZE_BYTES);
   double* lMatrix = (double*)malloc(MATRIX_SIZE_BYTES);
   double* uMatrix = (double*)malloc(MATRIX_SIZE_BYTES);
+  double* resMatrix = (double*)malloc(MATRIX_SIZE_BYTES);
 
   for (int i = 0; i < matrixSize; i++) {
     for (int j = 0; j < matrixSize; j++) {
       opMatrix[i * matrixSize + j] = (double)getRandBetween(-5, 5);
       lMatrix[i * matrixSize + j] = 0;
       uMatrix[i * matrixSize + j] = 0;
+      resMatrix[i * matrixSize + j] = 0;
     }
   }
 
@@ -87,7 +82,7 @@ int main(int argc, char* argv[]) {
 
     switch (op) {
       case 1:
-        seqLU(opMatrix, lMatrix, uMatrix, matrixSize);
+        seqLUClass(opMatrix, resMatrix, matrixSize);
         break;
         // case 2:
         //   algorithmTime = optimCycle(op1Matrix, op2Matrix, resMatrix,
@@ -102,6 +97,8 @@ int main(int argc, char* argv[]) {
     printMatrix(lMatrix, matrixSize);
     cout << "U" << endl;
     printMatrix(uMatrix, matrixSize);
+    cout << "LU" << endl;
+    printMatrix(resMatrix, matrixSize);
 
     // memset(resMatrix, 0, MATRIX_SIZE_BYTES);
 
