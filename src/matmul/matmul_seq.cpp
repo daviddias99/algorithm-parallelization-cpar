@@ -4,15 +4,12 @@
 #include <iomanip>
 #include <iostream>
 #include <string.h>
+#include <chrono>
 
 using namespace std;
 
-#define SYSTEMTIME clock_t
-
-double simpleCycle(double* op1Matrix, double* op2Matrix, double* resMatrix, int matrixSize) {
-  SYSTEMTIME Time1, Time2;
+void simpleCycle(double* op1Matrix, double* op2Matrix, double* resMatrix, int matrixSize) {
   int i, j, k, rowOffsetI;
-  Time1 = clock();
 
   for (i = 0; i < matrixSize; i++) {
     rowOffsetI = i * matrixSize;
@@ -22,17 +19,10 @@ double simpleCycle(double* op1Matrix, double* op2Matrix, double* resMatrix, int 
       }
     }
   }
-
-  Time2 = clock();
-
-  return (double)(Time2 - Time1) / CLOCKS_PER_SEC;
 }
 
-double optimCycle(double* op1Matrix, double* op2Matrix, double* resMatrix, int matrixSize) {
-  SYSTEMTIME Time1, Time2;
+void optimCycle(double* op1Matrix, double* op2Matrix, double* resMatrix, int matrixSize) {
   int i, j, k, rowOffsetI, rowOffsetK;
-
-  Time1 = clock();
 
   for (i = 0; i < matrixSize; i++) {
     rowOffsetI = i * matrixSize;
@@ -43,17 +33,10 @@ double optimCycle(double* op1Matrix, double* op2Matrix, double* resMatrix, int m
       }
     }
   }
-
-  Time2 = clock();
-
-  return (double)(Time2 - Time1) / CLOCKS_PER_SEC;
 }
 
-double blockCycle(double* op1Matrix, double* op2Matrix, double* resMatrix,
+void blockCycle(double* op1Matrix, double* op2Matrix, double* resMatrix,
                   int matrixSize, int blockSize) {
-  SYSTEMTIME Time1, Time2;
-  Time1 = clock();
-
   int ii, jj, kk, i, j, k, rowOffsetI, rowOffsetK;
 
   for (ii = 0; ii < matrixSize; ii += blockSize)
@@ -69,10 +52,6 @@ double blockCycle(double* op1Matrix, double* op2Matrix, double* resMatrix,
                   op2Matrix[rowOffsetK + j];
           }
         }
-
-  Time2 = clock();
-
-  return (double) (Time2 - Time1) / CLOCKS_PER_SEC;
 }
 
 /* Usage: matrixprod <operation> <square matrix size> <runs> [block size]*/
@@ -107,27 +86,26 @@ int main(int argc, char *argv[]) {
     memset(resMatrix, 0, matrixSize * matrixSize * sizeof(double));
     // Start counting
 
-    double algorithmTime;
-
+    auto begin = std::chrono::high_resolution_clock::now();
     switch (op) {
       case 1:
-        algorithmTime = simpleCycle(op1Matrix, op2Matrix, resMatrix, matrixSize);
+        simpleCycle(op1Matrix, op2Matrix, resMatrix, matrixSize);
         break;
       case 2:
-        algorithmTime = optimCycle(op1Matrix, op2Matrix, resMatrix, matrixSize);
+        optimCycle(op1Matrix, op2Matrix, resMatrix, matrixSize);
         break;
       case 3:
-        algorithmTime = blockCycle(op1Matrix, op2Matrix, resMatrix, matrixSize, blockSize);
+        blockCycle(op1Matrix, op2Matrix, resMatrix, matrixSize, blockSize);
         break;
     }
-
+    auto end = chrono::high_resolution_clock::now();
+    auto elapsed = chrono::duration_cast<chrono::microseconds>(end - begin);
     memset(resMatrix, 0, MATRIX_SIZE_BYTES);
-
-    cout << algorithmTime << endl;
-
+    cout << op << " " << matrixSize << " " << elapsed.count()/ 1000000.0 << endl;
   }
 
   free(op1Matrix);
   free(op2Matrix);
   free(resMatrix);
+  return 0;
 }
