@@ -1,4 +1,4 @@
-//#include <omp.h>
+#include <omp.h>
 #include <stdio.h>
 #include <time.h>
 #include <iomanip>
@@ -54,7 +54,30 @@ void blockCycle(double* op1Matrix, double* op2Matrix, double* resMatrix,
         }
 }
 
-/* Usage: matrixprod <operation> <square matrix size> <runs> [block size]*/
+void parallelBlockMatrixMultiplication(double* op1Matrix, double* op2Matrix, double* resMatrix,
+                  int matrixSize, int blockSize) {
+  int ii, jj, kk, i, j, k, rowOffsetI, rowOffsetK;
+  #pragma omp parallel shared(op1Matrix, op2Matrix, resMatrix) private(ii, jj, kk, i, j, k)
+  { 
+    #pragma omp for
+    for (ii = 0; ii < matrixSize; ii += blockSize)
+      for (jj = 0; jj < matrixSize; jj += blockSize)
+        for (kk = 0; kk < matrixSize; kk += blockSize)
+          for (i = ii; i < ii + blockSize; i++){
+            rowOffsetI = i * matrixSize;
+            for (k = kk; k < kk + blockSize; k++){
+              rowOffsetK = k * matrixSize;
+              for (j = jj; j < jj + blockSize; j++)
+                resMatrix[rowOffsetI + j] +=
+                    op1Matrix[rowOffsetI + k] *
+                    op2Matrix[rowOffsetK + j];
+            }
+          }
+  }
+
+}
+
+/* Usage: matrixprod <square matrix size> <runs> <operation> [block size]*/
 int main(int argc, char *argv[]) {
   if (argc < 3) {
     cerr << "ERROR: insufficient number of arguments (square matrix size, runs, operation)" << endl;
@@ -92,7 +115,7 @@ int main(int argc, char *argv[]) {
         simpleCycle(op1Matrix, op2Matrix, resMatrix, matrixSize);
         break;
       case 2:
-        optimCycle(op1Matrix, op2Matrix, resMatrix, matrixSize);
+        parallelBlockMatrixMultiplication(op1Matrix, op2Matrix, resMatrix, matrixSize, blockSize);
         break;
       case 3:
         blockCycle(op1Matrix, op2Matrix, resMatrix, matrixSize, blockSize);
