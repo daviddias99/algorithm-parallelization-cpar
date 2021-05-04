@@ -79,6 +79,8 @@ void blockCycle(double* op1Matrix, double* op2Matrix, double* resMatrix,
 */
 
 void luBlockBased(double* resMatrix, size_t size, size_t blockSize) {
+
+
   // Move along matrix diagonal
   for (size_t currentDiagonalBlock = 0; currentDiagonalBlock < size;
        currentDiagonalBlock += blockSize) {
@@ -86,8 +88,11 @@ void luBlockBased(double* resMatrix, size_t size, size_t blockSize) {
     double* currentMatrixPosition =
         resMatrix + currentDiagonalBlock * size + currentDiagonalBlock;
 
+    // cout << "---" << endl;
+    // printMatrix(resMatrix, size);
+
     // Do LU factorization of block A00 and A10
-    luSequential(currentMatrixPosition, size - currentDiagonalBlock, blockSize,
+    luSequential(currentMatrixPosition, size - currentDiagonalBlock, min(blockSize, size-currentDiagonalBlock),
                  size);
 
     if (size - currentDiagonalBlock <= blockSize) break;
