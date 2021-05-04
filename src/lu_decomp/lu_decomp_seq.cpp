@@ -64,9 +64,10 @@ void blockCycle(double* op1Matrix, double* op2Matrix, double* resMatrix,
           rowOffsetI = i * matrixSize;
           for (k = kk; k < kk + blockSize; k++) {
             rowOffsetK = k * matrixSize;
-            for (j = jj; j < jj + blockSize; j++)
+            for (j = jj; j < jj + blockSize; j++) {
               resMatrix[rowOffsetI + j] +=
                   op1Matrix[rowOffsetI + k] * op2Matrix[rowOffsetK + j];
+            }
           }
         }
 }
@@ -81,7 +82,6 @@ void luBlockBased(double* resMatrix, size_t size, size_t blockSize) {
   // Move along matrix diagonal
   for (size_t currentDiagonalBlock = 0; currentDiagonalBlock < size;
        currentDiagonalBlock += blockSize) {
-    cout << 
     // Get current diagonal block start address (A00)
     double* currentMatrixPosition =
         resMatrix + currentDiagonalBlock * size + currentDiagonalBlock;
@@ -90,7 +90,7 @@ void luBlockBased(double* resMatrix, size_t size, size_t blockSize) {
     luSequential(currentMatrixPosition, size - currentDiagonalBlock, blockSize,
                  size);
 
-    if (currentDiagonalBlock == size - blockSize) break;
+    if (size - currentDiagonalBlock <= blockSize) break;
 
     // Do LU factorization for block A01
     for (size_t k = currentDiagonalBlock;
@@ -111,7 +111,7 @@ void luBlockBased(double* resMatrix, size_t size, size_t blockSize) {
     double* op2Matrix = currentMatrixPosition + blockSize;
     double* resultMatrix = currentMatrixPosition + blockSize * size + blockSize;
 
-    size_t sizeLimit = size - (1 + currentDiagonalBlock) * blockSize;
+    size_t sizeLimit = size - (blockSize + currentDiagonalBlock);
 
     // Update A11
     for (size_t ii = 0; ii < sizeLimit; ii += blockSize)
@@ -137,14 +137,14 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  // Seed RNG
+  // Seed RNGsize - blockSize
   srand(time(NULL));
 
   // Get arguments
   int matrixSize = atoi(argv[1]);
   int runs = atoi(argv[2]);
   int op = atoi(argv[3]);
-  int blockSize = argc == 5 ? atoi(argv[4]) : matrixSize * matrixSize;
+  int blockSize = argc == 5 ? atoi(argv[4]) : matrixSize;
 
   const int MATRIX_SIZE_BYTES = (matrixSize * matrixSize) * sizeof(double);
 
@@ -173,14 +173,14 @@ int main(int argc, char* argv[]) {
     switch (op) {
       case 1:
         luSequential(opMatrix, matrixSize, matrixSize, matrixSize);
-        // cout << "-----------Solved-------------" << endl;
-        // printMatrix(opMatrix, matrixSize);
-        break;
+        cout << "-----------Solved-------------" << endl;
+        printMatrix(opMatrix, matrixSize);
+        //break;
       case 2:
         memcpy(opMatrix, resMatrix, MATRIX_SIZE_BYTES);
         luBlockBased(opMatrix, matrixSize, blockSize);
-        // cout << "-----------Solved-------------" << endl;
-        // printMatrix(opMatrix, matrixSize);
+        cout << "-----------Solved-------------" << endl;
+        printMatrix(opMatrix, matrixSize);
         break;
     }
     auto end = chrono::high_resolution_clock::now();
