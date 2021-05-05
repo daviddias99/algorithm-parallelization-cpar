@@ -69,8 +69,35 @@ void luBlocks(double *matrix, size_t size, size_t blockSize) {
     // cout << "---" << endl;
     // printMatrix(resMatrix, size);
 
-    // Do LU factorization of block A00 and A10
-    luSequential(diagonalBlock, size - currentDiagonalIdx, blockSize, size);
+    // Do LU factorization of block A00
+    luSequential(diagonalBlock, blockSize, blockSize, size);
+
+    // Do LU factorization of block A10
+
+    double *a10 = diagonalBlock + size * blockSize;
+
+    for (size_t ii = 0; ii < size - currentDiagonalIdx - blockSize;
+         ii += blockSize) {
+
+      for (size_t k = 0; k < blockSize && matrix[k * size + k] != 0; k++) {
+        size_t offsetK = k * size;
+
+        for (size_t i = ii; i < blockSize; i++) {
+          a10[i * size + k] /= diagonalBlock[offsetK + k];
+        }
+
+        // printMatrix(matrix, size);
+
+        for (size_t i = ii; i < blockSize; i++) {
+          size_t offsetI = i * size;
+          for (size_t j = k + 1; j < blockSize; j++) {
+            // cout << a10[offsetI + j] << ", " << a10[offsetI + k] << ", "
+            //      << diagonalBlock[offsetK + j] << endl;
+            a10[offsetI + j] -= a10[offsetI + k] * diagonalBlock[offsetK + j];
+          }
+        }
+      }
+    }
 
     if (size - currentDiagonalIdx <= blockSize) break;
 
