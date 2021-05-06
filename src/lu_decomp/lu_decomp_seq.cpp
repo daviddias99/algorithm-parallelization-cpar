@@ -83,8 +83,8 @@ void luBlocks(double *matrix, size_t size, size_t blockSize) {
       for (size_t k = 0; k < blockSize && matrix[k * size + k] != 0; k++) {
         size_t offsetK = k * size;
 
-        //cout << "----" << endl;
-        //printMatrix(matrix, size);
+        // cout << "----" << endl;
+        // printMatrix(matrix, size);
 
         for (size_t i = ii; i < ii + blockSize; i++) {
           // cout << a10[i * size + k] << ", " << diagonalBlock[offsetK + k]
@@ -147,66 +147,88 @@ void luBlocks(double *matrix, size_t size, size_t blockSize) {
 | A10 A11 |
 */
 
-void luOpenMP(double *resMatrix, size_t size, size_t blockSize) {
-  double *currentMatrixPosition, *op1Matrix, *op2Matrix, *resultMatrix;
-  size_t k, offsetK, i, rowOffsetI, j, sizeLimit, currentDiagonalBlock, ii, jj,
-      rowOffsetK;
+void luOpenMP(double *matrix, size_t size, size_t blockSize) {
+  double *diagonalBlock, *factorizedColumns, *factorizedRows, *subMatrix, *a10;
+  size_t k, offsetK, i, rowOffsetI, j, subMatrixSize, currentDiagonalIdx, ii,
+      jj, rowOffsetK;
 
 // Move along matrix diagonal
-#pragma omp parallel num_threads(8) private(                                  \
-    ii, jj, i, j, k, rowOffsetI, rowOffsetK, sizeLimit, currentDiagonalBlock, \
-    currentMatrixPosition)
-  for (currentDiagonalBlock = 0; currentDiagonalBlock < size;
-       currentDiagonalBlock += blockSize) {
+#pragma omp parallel num_threads(8) private(ii, jj, i, j, k, rowOffsetI, \
+                                            rowOffsetK, subMatrixSize,   \
+                                            currentDiagonalIdx, diagonalBlock, a10)
+  for (currentDiagonalIdx = 0; currentDiagonalIdx < size;
+       currentDiagonalIdx += blockSize) {
     // Get current diagonal block start address (A00)
-    currentMatrixPosition =
-        resMatrix + currentDiagonalBlock * size + currentDiagonalBlock;
+    diagonalBlock = matrix + currentDiagonalIdx * size + currentDiagonalIdx;
 
 // cout << "---" << endl;
 // printMatrix(resMatrix, size);
 
-// Do LU factorization of block A00 and A10
+// Do LU factorization of block A00
 #pragma omp single
-    {
-      luSequential(currentMatrixPosition, size - currentDiagonalBlock,
-                   blockSize, size);
+    { luSequential(diagonalBlock, blockSize, blockSize, size); }
 
-      // Do LU factorization for block A01
-      for (k = currentDiagonalBlock;
-           resMatrix[k * size + k] != 0 && k < currentDiagonalBlock + blockSize;
-           k++) {
-        offsetK = k * size;
-        for (i = k + 1; i < currentDiagonalBlock + blockSize; i++) {
-          rowOffsetI = i * size;
-          for (j = currentDiagonalBlock + blockSize; j < size; j++) {
-            resMatrix[rowOffsetI + j] -=
-                resMatrix[rowOffsetI + k] * resMatrix[offsetK + j];
+    if (size - currentDiagonalIdx <= blockSize) break;
+
+#pragma omp barrier
+
+    // Do LU factorization of block A10
+
+    a10 = diagonalBlock + size * blockSize;
+
+#pragma omp for
+    for (size_t ii = 0; ii < size - currentDiagonalIdx - blockSize;
+         ii += blockSize) {
+      for (size_t k = 0; k < blockSize && matrix[k * size + k] != 0; k++) {
+        size_t offsetK = k * size;
+        for (size_t i = ii; i < ii + blockSize; i++) {
+          a10[i * size + k] /= diagonalBlock[offsetK + k];
+        }
+
+        for (size_t i = ii; i < ii + blockSize; i++) {
+          size_t offsetI = i * size;
+          for (size_t j = k + 1; j < blockSize; j++) {
+            a10[offsetI + j] -= a10[offsetI + k] * diagonalBlock[offsetK + j];
           }
         }
       }
     }
 
-    if (size - currentDiagonalBlock <= blockSize) break;
-
-#pragma omp barrier
+// Do LU factorization for block A01
+#pragma omp for
+    for (size_t jj = currentDiagonalIdx + blockSize; jj < size;
+         jj += blockSize) {
+      for (k = currentDiagonalIdx;
+           matrix[k * size + k] != 0 && k < currentDiagonalIdx + blockSize;
+           k++) {
+        offsetK = k * size;
+        for (i = k + 1; i < currentDiagonalIdx + blockSize; i++) {
+          rowOffsetI = i * size;
+          for (j = jj; j < jj + blockSize; j++) {
+            matrix[rowOffsetI + j] -=
+                matrix[rowOffsetI + k] * matrix[offsetK + j];
+          }
+        }
+      }
+    }
 
     // Calculate addresses of blocks A10, A01 and A11
-    op1Matrix = currentMatrixPosition + blockSize * size;
-    op2Matrix = currentMatrixPosition + blockSize;
-    resultMatrix = currentMatrixPosition + blockSize * size + blockSize;
+    factorizedColumns = diagonalBlock + blockSize * size;
+    factorizedRows = diagonalBlock + blockSize;
+    subMatrix = diagonalBlock + blockSize * size + blockSize;
 
-    sizeLimit = size - (blockSize + currentDiagonalBlock);
+    subMatrixSize = size - (blockSize + currentDiagonalIdx);
 // Update A11
 #pragma omp for collapse(2)
-    for (ii = 0; ii < sizeLimit; ii += blockSize)
-      for (jj = 0; jj < sizeLimit; jj += blockSize) {
+    for (ii = 0; ii < subMatrixSize; ii += blockSize)
+      for (jj = 0; jj < subMatrixSize; jj += blockSize) {
         for (i = ii; i < ii + blockSize; i++) {
           rowOffsetI = i * size;
           for (k = 0; k < blockSize; k++) {
             rowOffsetK = k * size;
             for (j = jj; j < jj + blockSize; j++) {
-              resultMatrix[rowOffsetI + j] -=
-                  op1Matrix[rowOffsetI + k] * op2Matrix[rowOffsetK + j];
+              subMatrix[rowOffsetI + j] -= factorizedColumns[rowOffsetI + k] *
+                                           factorizedRows[rowOffsetK + j];
             }
           }
         }
@@ -260,18 +282,18 @@ int main(int argc, char *argv[]) {
         luSequential(opMatrix, matrixSize, matrixSize, matrixSize);
         cout << "-----------Solved-------------" << endl;
         printMatrix(opMatrix, matrixSize);
-        // break;
+        //break;
       case 2:
         memcpy(opMatrix, resMatrix, MATRIX_SIZE_BYTES);
         luBlocks(opMatrix, matrixSize, blockSize);
         cout << "-----------Solved-------------" << endl;
         printMatrix(opMatrix, matrixSize);
-        break;
+        //break;
       case 3:
         memcpy(opMatrix, resMatrix, MATRIX_SIZE_BYTES);
         luOpenMP(opMatrix, matrixSize, blockSize);
-        cout << "-----------Solved-------------" << endl;
-        printMatrix(opMatrix, matrixSize);
+        // cout << "-----------Solved-------------" << endl;
+        // printMatrix(opMatrix, matrixSize);
         break;
     }
     auto end = chrono::high_resolution_clock::now();
