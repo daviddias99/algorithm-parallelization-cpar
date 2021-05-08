@@ -7,6 +7,7 @@
 using namespace cl::sycl;
 
 class mxm_kernel;
+class mxm_kernel_naive;
 
 void outputDevInfo(const sycl::device& dev) {
   std::cout << "  -> Selected device: "
@@ -39,7 +40,8 @@ inline int prevPowerOfTwo(int x) {
 inline bool isPowerOfTwo(int x) { return (x & (x - 1)) == 0; }
 
 template <typename T>
-bool local_mxm(cl::sycl::queue& q, T* MA, T* MB, T* MC, int matSize) {
+bool local_mxm(T* MA, T* MB, T* MC, size_t matSize,
+               const device_selector& selector) {
   // Make sure it is power of two before running
   if (!isPowerOfTwo(matSize)) {
     std::cout << " This example only works with power of two sizes "
@@ -47,16 +49,29 @@ bool local_mxm(cl::sycl::queue& q, T* MA, T* MB, T* MC, int matSize) {
     return true;
   }
 
+  queue q(selector, [&](exception_list eL) {
+    try {
+      for (auto& e : eL) {
+        std::rethrow_exception(e);
+      }
+    } catch (cl::sycl::exception e) {
+      std::cout << " An exception has been thrown: " << e.what() << std::endl;
+    }
+  });
+
   auto device = q.get_device();
   auto maxBlockSize =
       device.get_info<cl::sycl::info::device::max_work_group_size>();
+  auto localMemSize = device.get_info<cl::sycl::info::device::local_mem_size>();
   auto blockSize = prevPowerOfTwo(std::sqrt(maxBlockSize));
   std::cout << " The Device Max Work Group Size is : " << maxBlockSize
+            << std::endl;
+  std::cout << " The Device size of local memory in bytes is : " << localMemSize
             << std::endl;
   std::cout << " The order is : " << matSize << std::endl;
   std::cout << " The blockSize is : " << blockSize << std::endl;
   // Make sure the block size is not larger than the mat size
-  blockSize = std::min(matSize, blockSize);
+  blockSize = std::min((int) matSize, blockSize);
 
   {
     /* Buffers can be constructed with property lists. In this example,
@@ -85,14 +100,14 @@ bool local_mxm(cl::sycl::queue& q, T* MA, T* MB, T* MC, int matSize) {
       cgh.parallel_for<mxm_kernel>(
           nd_range<2>{range<2>(matSize, matSize),
                       range<2>(blockSize, blockSize)},
-          [=](nd_item<2> it) {
+          [=](nd_item<2> item) {
             // Current block
-            int blockX = it.get_group(1);
-            int blockY = it.get_group(0);
+            int blockX = item.get_group(1);
+            int blockY = item.get_group(0);
 
             // Current local item
-            int localX = it.get_local_id(1);
-            int localY = it.get_local_id(0);
+            int localX = item.get_local_id(1);
+            int localY = item.get_local_id(0);
 
             // Start in the A matrix
             int a_start = matSize * blockSize * blockY;
@@ -112,7 +127,7 @@ bool local_mxm(cl::sycl::queue& q, T* MA, T* MB, T* MC, int matSize) {
               // Note the swap of X/Y to maintain contiguous access
               pBB[localX * blockSize + localY] =
                   pB[b + matSize * localY + localX];
-              it.barrier(access::fence_space::local_space);
+              item.barrier(access::fence_space::local_space);
               // Now each thread adds the value of its sum
               for (int k = 0; k < blockSize; k++) {
                 tmp +=
@@ -120,15 +135,68 @@ bool local_mxm(cl::sycl::queue& q, T* MA, T* MB, T* MC, int matSize) {
               }
               // The barrier ensures that all threads have written to local
               // memory before continuing
-              it.barrier(access::fence_space::local_space);
+              item.barrier(access::fence_space::local_space);
             }
-            auto elemIndex = it.get_global_id(0) * it.get_global_range()[1] +
-                             it.get_global_id(1);
+            auto elemIndex =
+                item.get_global_id(0) * item.get_global_range()[1] +
+                item.get_global_id(1);
             // Each thread updates its position
             pC[elemIndex] = tmp;
           });
     });
   }
+
+  q.wait_and_throw();
+
+  return false;
+}
+
+template <typename T>
+bool local_mxm_naive(T* MA, T* MB, T* MC, size_t matSize,
+                     const device_selector& selector) {
+  // Make sure it is power of two before running
+  if (!isPowerOfTwo(matSize)) {
+    std::cout << " This example only works with power of two sizes "
+              << std::endl;
+    return true;
+  }
+
+  queue q(selector, [&](exception_list eL) {
+    try {
+      for (auto& e : eL) {
+        std::rethrow_exception(e);
+      }
+    } catch (cl::sycl::exception e) {
+      std::cout << " An exception has been thrown: " << e.what() << std::endl;
+    }
+  });
+
+  auto device = q.get_device();
+
+  {
+    range<2> dimensions(matSize, matSize);
+    const property_list props = {property::buffer::use_host_ptr()};
+    buffer<T, 2> bA(MA, dimensions, props);
+    buffer<T, 2> bB(MB, dimensions, props);
+    buffer<T, 2> bC(MC, dimensions, props);
+
+    q.submit([&](handler& h) {
+      auto a = bA.template get_access<access::mode::read>(h);
+      auto b = bB.template get_access<access::mode::read>(h);
+      auto c = bC.template get_access<access::mode::write>(h);
+
+      h.parallel_for<mxm_kernel_naive>(range<2>{matSize, matSize}, [=](id<2> idx) {
+        int j = idx[0];
+        int i = idx[1];
+        for (int k = 0; k < matSize; ++k) {
+          c[j][i] += a[j][k] * b[k][i];
+        }
+      });
+    });
+  }
+
+  q.wait_and_throw();
+
   return false;
 }
 
@@ -143,17 +211,50 @@ void usage(std::string programName) {
             << " Default is to use both " << std::endl;
 }
 
-bool runExperiment(cl::sycl::queue& q, float* MA, float* MB, float* MC,
-                   int matSize) {
-  outputDevInfo(q.get_device());
-
+bool runExperiment(float* MA, float* MB, float* MC, size_t matSize,
+                   const device_selector& selector) {
   auto start = std::chrono::steady_clock::now();
-  bool error = local_mxm(q, MA, MB, MC, matSize);
-  q.wait_and_throw();
+  bool error = local_mxm(MA, MB, MC, matSize, selector);
   auto end = std::chrono::steady_clock::now();
   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
                   .count();
-  std::cout << "SYCL: ";
+
+  std::cout << "Time: " << time << std::endl;
+  float flops =
+      (2.0f * matSize * matSize * matSize / (time / 1000.0f)) * 1.0e-9f;
+  std::cout << "GFLOPs: " << flops << std::endl;
+
+  if (!error) {
+    error = false;
+    // Testing
+    for (int i = 0; i < matSize; i++)
+      for (int j = 0; j < matSize; j++) {
+        if (std::fabs(MC[i * matSize + j] - MB[i * matSize + j]) > 1e-8) {
+          std::cout << " Position " << i << ", " << j
+                    << " differs: " << MC[i * matSize + j]
+                    << " != " << MB[i * matSize + j] << std::endl;
+          error = true;
+        }
+      }
+    if (!error) {
+      std::cout << "Success" << std::endl;
+      ;
+    } else {
+      std::cout << "Error in the computation " << std::endl;
+    }
+  }
+
+  return error;
+}
+
+bool runExperimentNaive(float* MA, float* MB, float* MC, size_t matSize,
+                        const device_selector& selector) {
+  auto start = std::chrono::steady_clock::now();
+  bool error = local_mxm_naive(MA, MB, MC, matSize, selector);
+  auto end = std::chrono::steady_clock::now();
+  auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+                  .count();
+
   std::cout << "Time: " << time << std::endl;
   float flops =
       (2.0f * matSize * matSize * matSize / (time / 1000.0f)) * 1.0e-9f;
@@ -195,7 +296,7 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  int matSize = 0;
+  size_t matSize = 0;
   try {
     matSize = std::stoi(argv[1]);
   } catch (...) {
@@ -243,17 +344,7 @@ int main(int argc, char* argv[]) {
         MC[i * matSize + j] = 0.0f;  // i * matSize + j;
       }
 
-    queue q(gpu_selector{}, [&](exception_list eL) {
-      try {
-        for (auto& e : eL) {
-          std::rethrow_exception(e);
-        }
-      } catch (cl::sycl::exception e) {
-        std::cout << " An exception has been thrown: " << e.what() << std::endl;
-      }
-    });
-
-    error = runExperiment(q, MA, MB, MC, matSize);
+    error = runExperiment(MA, MB, MC, matSize, gpu_selector{});
   }
   if (cpu) {
     std::cout << "***** CPU " << std::endl;
@@ -263,17 +354,28 @@ int main(int argc, char* argv[]) {
         MC[i * matSize + j] = 0.0f;  // i * matSize + j;
       }
 
-    queue q(cpu_selector{}, [&](exception_list eL) {
-      try {
-        for (auto& e : eL) {
-          std::rethrow_exception(e);
-        }
-      } catch (cl::sycl::exception e) {
-        std::cout << " An exception has been thrown: " << e.what() << std::endl;
-      }
-    });
+    error = runExperiment(MA, MB, MC, matSize, cpu_selector{});
+  }
 
-    error = runExperiment(q, MA, MB, MC, matSize);
+  if (gpu) {
+    std::cout << "***** Naive GPU " << std::endl;
+    // Matrix initialization
+    for (int i = 0; i < matSize; i++)
+      for (int j = 0; j < matSize; j++) {
+        MC[i * matSize + j] = 0.0f;  // i * matSize + j;
+      }
+
+    error = runExperimentNaive(MA, MB, MC, matSize, gpu_selector{});
+  }
+  if (cpu) {
+    std::cout << "***** Naive CPU " << std::endl;
+    // Matrix initialization
+    for (int i = 0; i < matSize; i++)
+      for (int j = 0; j < matSize; j++) {
+        MC[i * matSize + j] = 0.0f;  // i * matSize + j;
+      }
+
+    error = runExperimentNaive(MA, MB, MC, matSize, cpu_selector{});
   }
 
   delete[] MA;
