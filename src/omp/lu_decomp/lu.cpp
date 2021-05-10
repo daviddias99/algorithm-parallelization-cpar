@@ -9,6 +9,7 @@
 #include "lu_seq.h"
 #include "lu_blocks.h"
 #include "lu_data_parallel.h"
+#include "lu_func_parallel.h"
 using namespace std;
 
 int getRandBetween(int min, int max) { return rand() % (max - min + 1) + min; }
@@ -61,6 +62,7 @@ int main(int argc, char *argv[]) {
   // init matrices
   double *opMatrix = (double *)malloc(MATRIX_SIZE_BYTES);
   double *resMatrix = (double *)malloc(MATRIX_SIZE_BYTES);
+  double *controlMatrix = (double *)malloc(MATRIX_SIZE_BYTES);
 
   for (int i = 0; i < matrixSize; i++) {
     for (int j = 0; j < matrixSize; j++) {
@@ -74,13 +76,16 @@ int main(int argc, char *argv[]) {
 
   for (int i = 0; i < runs; i++) {
     memcpy(opMatrix, resMatrix, MATRIX_SIZE_BYTES);
+    memcpy(controlMatrix, resMatrix, MATRIX_SIZE_BYTES);
     // We do this here instead of inside the functions to avoid affecting the
     // times of execution
     // Start counting
+    luSequential(controlMatrix, matrixSize, matrixSize, matrixSize);
+    cout << "-------- CONTROL --------" << endl;
+    printMatrix(controlMatrix, matrixSize);
     auto begin = std::chrono::high_resolution_clock::now();
     switch (op) {
       case 1:
-        luSequential(opMatrix, matrixSize, matrixSize, matrixSize);
         break;
       case 2:
         luBlocks(opMatrix, matrixSize, blockSize);
@@ -88,12 +93,27 @@ int main(int argc, char *argv[]) {
       case 3:
         luDataParallel(opMatrix, matrixSize, blockSize);
         break;
+      case 4:
+        luFuncParallel(opMatrix, matrixSize, blockSize);
+        break;
     }
+
+    cout << "-------- RES --------" << endl;
+    printMatrix(controlMatrix, matrixSize);
     auto end = chrono::high_resolution_clock::now();
     auto elapsed = chrono::duration_cast<chrono::microseconds>(end - begin);
 
     cout << op << " " << matrixSize << " " << blockSize << " " << elapsed.count() / 1000000.0
          << endl;
+  }
+
+  for (int i = 0; i < matrixSize; i++) {
+    for (int j = 0; j < matrixSize; j++) {
+      if(opMatrix[i * matrixSize + j] != controlMatrix[i*matrixSize + j]){
+        cout << "ALGORITHM NOT CORRECT" << endl;
+        return -1;
+      }
+    }
   }
 
   free(opMatrix);
