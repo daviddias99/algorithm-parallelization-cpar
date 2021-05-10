@@ -8,34 +8,7 @@
 
 using namespace std;
 
-void simpleCycle(double* op1Matrix, double* op2Matrix, double* resMatrix, int matrixSize) {
-  int i, j, k, rowOffsetI;
-
-  for (i = 0; i < matrixSize; i++) {
-    rowOffsetI = i * matrixSize;
-    for (j = 0; j < matrixSize; j++) {
-      for (k = 0; k < matrixSize; k++) {
-        resMatrix[rowOffsetI + j] += op1Matrix[rowOffsetI + k] * op2Matrix[k * matrixSize + j];
-      }
-    }
-  }
-}
-
-void optimCycle(double* op1Matrix, double* op2Matrix, double* resMatrix, int matrixSize) {
-  int i, j, k, rowOffsetI, rowOffsetK;
-
-  for (i = 0; i < matrixSize; i++) {
-    rowOffsetI = i * matrixSize;
-    for (k = 0; k < matrixSize; k++) {
-      rowOffsetK = k * matrixSize;
-      for (j = 0; j < matrixSize; j++) {
-        resMatrix[rowOffsetI + j] += op1Matrix[rowOffsetI + k] * op2Matrix[rowOffsetK + j];
-      }
-    }
-  }
-}
-
-void blockCycle(double* op1Matrix, double* op2Matrix, double* resMatrix,
+void matMulSequential(double* op1Matrix, double* op2Matrix, double* resMatrix,
                   int matrixSize, int blockSize) {
   int ii, jj, kk, i, j, k, rowOffsetI, rowOffsetK;
 
@@ -54,7 +27,30 @@ void blockCycle(double* op1Matrix, double* op2Matrix, double* resMatrix,
         }
 }
 
-void parallelBlockMatrixMultiplication(double* op1Matrix, double* op2Matrix, double* resMatrix,
+void matMulParallelCollapse(double* op1Matrix, double* op2Matrix, double* resMatrix,
+                  int matrixSize, int blockSize) {
+  int ii, jj, kk, i, j, k, rowOffsetI, rowOffsetK;
+  #pragma omp parallel shared(op1Matrix, op2Matrix, resMatrix) private(ii, jj, kk, i, j, k)
+  { 
+    #pragma omp for collapse(2)
+    for (ii = 0; ii < matrixSize; ii += blockSize)
+      for (jj = 0; jj < matrixSize; jj += blockSize)
+        for (kk = 0; kk < matrixSize; kk += blockSize)
+          for (i = ii; i < ii + blockSize; i++){
+            rowOffsetI = i * matrixSize;
+            for (k = kk; k < kk + blockSize; k++){
+              rowOffsetK = k * matrixSize;
+              for (j = jj; j < jj + blockSize; j++)
+                resMatrix[rowOffsetI + j] +=
+                    op1Matrix[rowOffsetI + k] *
+                    op2Matrix[rowOffsetK + j];
+            }
+          }
+  }
+
+}
+
+void matMulParallel(double* op1Matrix, double* op2Matrix, double* resMatrix,
                   int matrixSize, int blockSize) {
   int ii, jj, kk, i, j, k, rowOffsetI, rowOffsetK;
   #pragma omp parallel shared(op1Matrix, op2Matrix, resMatrix) private(ii, jj, kk, i, j, k)
@@ -112,19 +108,19 @@ int main(int argc, char *argv[]) {
     auto begin = std::chrono::high_resolution_clock::now();
     switch (op) {
       case 1:
-        simpleCycle(op1Matrix, op2Matrix, resMatrix, matrixSize);
+        matMulSequential(op1Matrix, op2Matrix, resMatrix, matrixSize, blockSize);
         break;
       case 2:
-        parallelBlockMatrixMultiplication(op1Matrix, op2Matrix, resMatrix, matrixSize, blockSize);
+        matMulParallel(op1Matrix, op2Matrix, resMatrix, matrixSize, blockSize);
         break;
       case 3:
-        blockCycle(op1Matrix, op2Matrix, resMatrix, matrixSize, blockSize);
+        matMulParallelCollapse(op1Matrix, op2Matrix, resMatrix, matrixSize, blockSize);
         break;
     }
     auto end = chrono::high_resolution_clock::now();
     auto elapsed = chrono::duration_cast<chrono::microseconds>(end - begin);
     memset(resMatrix, 0, MATRIX_SIZE_BYTES);
-    cout << op << " " << matrixSize << " " << elapsed.count()/ 1000000.0 << endl;
+    cout << op << " " << matrixSize << " " << blockSize << " " << elapsed.count()/ 1000000.0 << endl;
   }
 
   free(op1Matrix);

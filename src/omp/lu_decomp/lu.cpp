@@ -284,7 +284,7 @@ int main(int argc, char *argv[]) {
     auto elapsed = chrono::duration_cast<chrono::microseconds>(end - begin);
     cout << "-----------.-------------" << endl;
     // printMatrix(opMatrix, matrixSize);
-    cout << op << " " << matrixSize << " " << elapsed.count() / 1000000.0
+    cout << op << " " << matrixSize << " " << blockSize << " " << elapsed.count() / 1000000.0
          << endl;
   }
 
