@@ -62,19 +62,16 @@ void luFuncParallel(double* matrix, size_t size, size_t blockSize) {
 #pragma omp parallel num_threads(8) private( \
     ii, jj, subMatrixSize, currentDiagonalIdx, diagonalBlock, a10)
 #pragma omp single
-    {
-  for (currentDiagonalIdx = 0; currentDiagonalIdx < size;
-       currentDiagonalIdx += blockSize) {
-    // Get current diagonal block start address (A00)
-    diagonalBlock = matrix + currentDiagonalIdx * size + currentDiagonalIdx;
-
+  {
+    for (currentDiagonalIdx = 0; currentDiagonalIdx < size;
+         currentDiagonalIdx += blockSize) {
+      // Get current diagonal block start address (A00)
+      diagonalBlock = matrix + currentDiagonalIdx * size + currentDiagonalIdx;
 
       // Do LU factorization of block A00
       luSequential(diagonalBlock, blockSize, blockSize, size);
 
       if (size - currentDiagonalIdx <= blockSize) break;
- // FIXME acho que este barrier ja existe implicitamente no
-                     // fim do single
 
       // Do LU factorization of block A10
       a10 = diagonalBlock + size * blockSize;
