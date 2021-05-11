@@ -99,8 +99,6 @@ bool matmulBlocks(T* MA, T* MB, T* MC, size_t matSize,
   auto blockSize = prevPowerOfTwo(std::sqrt(maxWorkGroupSize));
   std::cout << " The Device Max Work Group Size is : " << maxWorkGroupSize
             << std::endl;
-  std::cout << " The Device size of local memory in bytes is : " << localMemSize
-            << std::endl;
   std::cout << " The order is : " << matSize << std::endl;
   std::cout << " The blockSize is : " << blockSize << std::endl;
 
@@ -181,6 +179,11 @@ bool matmulBlocksLocalMem(T* MA, T* MB, T* MC, size_t matSize,
   std::cout << " The Device size of local memory in bytes is : " << localMemSize
             << std::endl;
   std::cout << " The matrixSize is : " << matSize << std::endl;
+
+  if (localMemSize < 2 * blockSize * blockSize * sizeof(T)) {
+    blockSize = prevPowerOfTwo(std::sqrt(localMemSize / 2 / sizeof(T)));
+  }
+
   std::cout << " The blockSize is : " << blockSize << std::endl;
 
   blockSize = std::min((int)matSize, blockSize);
@@ -320,9 +323,9 @@ bool runExperimentBlocks(T* MA, T* MB, T* MC, size_t matSize,
     for (int i = 0; i < matSize; i++)
       for (int j = 0; j < matSize; j++) {
         if (std::fabs(MC[i * matSize + j] - MB[i * matSize + j]) > 1e-8) {
-          std::cout << " Position " << i << ", " << j
-                    << " differs: " << MC[i * matSize + j]
-                    << " != " << MB[i * matSize + j] << std::endl;
+          // std::cout << " Position " << i << ", " << j
+          //           << " differs: " << MC[i * matSize + j]
+          //           << " != " << MB[i * matSize + j] << std::endl;
           error = true;
         }
       }
@@ -410,9 +413,9 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  float* MA = new float[matSize * matSize];
-  float* MB = new float[matSize * matSize];
-  float* MC = new float[matSize * matSize];
+  double* MA = new double[matSize * matSize];
+  double* MB = new double[matSize * matSize];
+  double* MC = new double[matSize * matSize];
 
   // Matrix initialization
   for (int i = 0; i < matSize; i++)
