@@ -26,6 +26,8 @@ __global__ void MatrixMulKernel(double *Md, double *Nd, double *Pd, int width) {
     for (int k = 0; k < TILE_WIDTH; ++k) Pvalue += Mds[tx][k] * Nds[k][ty];
     __syncthreads();
   }
+
+  Pd[Row*width+Col] = Pvalue; 
 }
 
 
@@ -68,6 +70,15 @@ int main(int argc, char *argv[]) {
     auto elapsed = chrono::duration_cast<chrono::microseconds>(end - begin);
     cout << 1 << " " << matrixSize << " " << TILE_WIDTH << " " << elapsed.count()/ 1000000.0 << endl;
   }
+  cudaMemcpy(P, Pd, matrixSize*matrixSize * sizeof(double), cudaMemcpyDeviceToHost);
+
+  for (int i = 0; i < matrixSize; i++){
+    for (int j = 0; j < matrixSize; j++){
+      cout  << P[i * matrixSize + j];
+    }
+    cout << endl;
+  }
+
   cudaFree(Md);
   cudaFree(Nd);
   cudaFree(Pd);
