@@ -6,10 +6,10 @@
 #include <iomanip>
 #include <iostream>
 
-#include "lu_seq.h"
 #include "lu_blocks.h"
 #include "lu_data_parallel.h"
 #include "lu_func_parallel.h"
+#include "lu_seq.h"
 using namespace std;
 
 int getRandBetween(int min, int max) { return rand() % (max - min + 1) + min; }
@@ -73,7 +73,6 @@ int main(int argc, char *argv[]) {
     }
   }
 
-
   for (int i = 0; i < runs; i++) {
     memcpy(opMatrix, resMatrix, MATRIX_SIZE_BYTES);
     memcpy(controlMatrix, resMatrix, MATRIX_SIZE_BYTES);
@@ -81,8 +80,8 @@ int main(int argc, char *argv[]) {
     // times of execution
     // Start counting
     luSequential(controlMatrix, matrixSize, matrixSize, matrixSize);
-    cout << "-------- CONTROL --------" << endl;
-    printMatrix(controlMatrix, matrixSize);
+    // cout << "-------- CONTROL --------" << endl;
+    // printMatrix(controlMatrix, matrixSize);
     auto begin = std::chrono::high_resolution_clock::now();
     switch (op) {
       case 1:
@@ -98,19 +97,21 @@ int main(int argc, char *argv[]) {
         break;
     }
 
-    cout << "-------- RES --------" << endl;
-    printMatrix(controlMatrix, matrixSize);
+    // cout << "-------- RES --------" << endl;
+    // printMatrix(controlMatrix, matrixSize);
     auto end = chrono::high_resolution_clock::now();
     auto elapsed = chrono::duration_cast<chrono::microseconds>(end - begin);
 
-    cout << op << " " << matrixSize << " " << blockSize << " " << elapsed.count() / 1000000.0
-         << endl;
+    cout << op << " " << matrixSize << " " << blockSize << " "
+         << elapsed.count() / 1000000.0 << endl;
   }
 
   for (int i = 0; i < matrixSize; i++) {
     for (int j = 0; j < matrixSize; j++) {
-      if(opMatrix[i * matrixSize + j] != controlMatrix[i*matrixSize + j]){
-        cout << "ALGORITHM NOT CORRECT" << endl;
+      if (opMatrix[i * matrixSize + j] != controlMatrix[i * matrixSize + j]) {
+        cout << "ALGORITHM NOT CORRECT " << opMatrix[i * matrixSize + j]
+             << " != " << controlMatrix[i * matrixSize + j] << endl;
+
         return -1;
       }
     }

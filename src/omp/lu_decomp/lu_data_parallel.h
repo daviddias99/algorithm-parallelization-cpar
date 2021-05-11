@@ -1,4 +1,5 @@
 #include <iostream>
+
 #include "lu_seq.h"
 
 /*
@@ -7,13 +8,14 @@
 */
 void luDataParallel(double *matrix, size_t size, size_t blockSize) {
   double *diagonalBlock, *factorizedColumns, *factorizedRows, *subMatrix, *a10;
-  size_t k, offsetK, offsetI, i, rowOffsetI, j, subMatrixSize, currentDiagonalIdx, ii,
-      jj, rowOffsetK;
+  size_t k, offsetK, offsetI, i, rowOffsetI, j, subMatrixSize,
+      currentDiagonalIdx, ii, jj, rowOffsetK;
 
 // Move along matrix diagonal
-#pragma omp parallel num_threads(8) private(                \
-    ii, jj, i, j, k, rowOffsetI, rowOffsetK, subMatrixSize, \
-    currentDiagonalIdx, diagonalBlock, a10, offsetI)
+#pragma omp parallel num_threads(8) private(                                 \
+    ii, jj, i, j, k, rowOffsetI, rowOffsetK, currentDiagonalIdx,             \
+    diagonalBlock, offsetI, offsetK, factorizedColumns, factorizedRows, a10, \
+    subMatrixSize, subMatrix)
 
   for (currentDiagonalIdx = 0; currentDiagonalIdx < size;
        currentDiagonalIdx += blockSize) {
@@ -30,8 +32,7 @@ void luDataParallel(double *matrix, size_t size, size_t blockSize) {
     a10 = diagonalBlock + size * blockSize;
 
 #pragma omp for
-    for (ii = 0; ii < size - currentDiagonalIdx - blockSize;
-         ii += blockSize) {
+    for (ii = 0; ii < size - currentDiagonalIdx - blockSize; ii += blockSize) {
       for (k = 0; k < blockSize && matrix[k * size + k] != 0; k++) {
         offsetK = k * size;
         for (i = ii; i < ii + blockSize; i++) {
@@ -49,8 +50,7 @@ void luDataParallel(double *matrix, size_t size, size_t blockSize) {
 
 // Do LU factorization for block A01
 #pragma omp for
-    for (jj = currentDiagonalIdx + blockSize; jj < size;
-         jj += blockSize) {
+    for (jj = currentDiagonalIdx + blockSize; jj < size; jj += blockSize) {
       for (k = currentDiagonalIdx;
            matrix[k * size + k] != 0 && k < currentDiagonalIdx + blockSize;
            k++) {
