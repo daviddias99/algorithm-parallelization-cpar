@@ -97,6 +97,8 @@ int main(int argc, char *argv[]) {
         break;
     }
 
+
+
     // cout << "-------- RES --------" << endl;
     // printMatrix(controlMatrix, matrixSize);
     auto end = chrono::high_resolution_clock::now();
