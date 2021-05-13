@@ -2,6 +2,7 @@
 #include <chrono>
 #include <cmath>
 #include <ctime>
+#include <iomanip>
 #include <iostream>
 #include <string>
 
@@ -24,7 +25,7 @@ void outputDevInfo(const sycl::device& dev) {
 void printMatrix(double* matrix, size_t size) {
   for (size_t i = 0; i < size; i++) {
     for (size_t j = 0; j < size; j++) {
-      std::cout << "   " << matrix[i * size + j];
+      std::cout << std::setw(12) << matrix[i * size + j];
     }
     std::cout << std::endl;
   }
@@ -53,8 +54,7 @@ bool luFactorization(T* MA, size_t matSize, const device_selector& selector) {
   for (size_t currentDiagonalIdx = 0; currentDiagonalIdx < matSize;
        currentDiagonalIdx += blockSize) {
     auto hostAcc = bA.template get_access<sycl::access::mode::read_write>(
-        range<2>(matSize - currentDiagonalIdx * blockSize,
-                 matSize - currentDiagonalIdx * blockSize),
+        range<2>(matSize - currentDiagonalIdx, matSize - currentDiagonalIdx),
         id<2>(currentDiagonalIdx, currentDiagonalIdx));
 
     for (size_t k = currentDiagonalIdx;
@@ -81,7 +81,7 @@ bool luFactorization(T* MA, size_t matSize, const device_selector& selector) {
         }
 
         for (size_t i = ii; i < ii + blockSize; i++) {
-          for (size_t j = k + 1; j < blockSize; j++) {
+          for (size_t j = k + 1; j < currentDiagonalIdx + blockSize; j++) {
             hostAcc[i + blockSize][j] -=
                 hostAcc[i + blockSize][k] * hostAcc[k][j];
           }
@@ -93,7 +93,7 @@ bool luFactorization(T* MA, size_t matSize, const device_selector& selector) {
          jj += blockSize) {
       for (size_t k = currentDiagonalIdx; k < currentDiagonalIdx + blockSize;
            k++) {
-        for (size_t i = k + 1; i < blockSize; i++) {
+        for (size_t i = k + 1; i < currentDiagonalIdx + blockSize; i++) {
           for (size_t j = jj; j < jj + blockSize; j++) {
             hostAcc[i][j] -= hostAcc[i][k] * hostAcc[k][j];
           }
@@ -148,7 +148,7 @@ bool runExperiment(T* MA, size_t matSize, const device_selector& selector) {
 bool compareResults(double* control, double* result, size_t matrixSize) {
   for (int i = 0; i < matrixSize; i++) {
     for (int j = 0; j < matrixSize; j++) {
-      if (control[i * matrixSize + j] != result[i * matrixSize + j]) {
+      if (control[i * matrixSize + j] - result[i * matrixSize + j] > 1e-8) {
         std::cout << "ALGORITHM NOT CORRECT " << result[i * matrixSize + j]
                   << " != " << control[i * matrixSize + j] << std::endl;
 
@@ -213,11 +213,17 @@ int main(int argc, char* argv[]) {
   memcpy(controlMatrix, originalMatrix, matSize * matSize * sizeof(double));
   luSequential(controlMatrix, matSize, matSize, matSize);
 
+  // std::cout << "***** Original" << std::endl;
+  // printMatrix(originalMatrix, matSize);
+  // std::cout << "***** Control" << std::endl;
+  // printMatrix(controlMatrix, matSize);
+
   if (gpu) {
     std::cout << "***** GPU" << std::endl;
     memcpy(MA, originalMatrix, matSize * matSize * sizeof(double));
 
     error = runExperiment(MA, matSize, gpu_selector{});
+    // printMatrix(MA, matSize);
     if (!error) error = compareResults(controlMatrix, MA, matSize);
 
     std::cout << (error ? "Error in computation." : "Success") << std::endl;
