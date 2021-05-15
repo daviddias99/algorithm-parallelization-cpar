@@ -107,7 +107,8 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize,
     //       for (k = 0; k < blockSize; k++) {
     //         rowOffsetK = k * matSize;
     //         for (j = jj; j < jj + blockSize; j++) {
-    //           subMatrix[rowOffsetI + j] -= factorizedColumns[rowOffsetI + k] *
+    //           subMatrix[rowOffsetI + j] -= factorizedColumns[rowOffsetI + k]
+    //           *
     //                                        factorizedRows[rowOffsetK + j];
     //         }
     //       }
@@ -119,27 +120,30 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize,
     const property_list props = {};
     buffer<double, 2> matrix(diagonalBlock, dimensions, props);
 
+    subMatrixSize = matSize - (blockSize + currentDiagonalIdx);
+
+    std::cout << "SubMatrixSize " << subMatrixSize << std::endl;
     Q.submit([&](handler& h) {
       auto matrixAcc = matrix.template get_access<access::mode::read_write>(h);
+      sycl::stream out(1024, 256, h);
 
       h.parallel_for<lu_kernel>(
-          nd_range<2>{range<2>(subMatrixSize, subMatrixSize), range<2>(blockSize, blockSize)},
+          nd_range<2>{range<2>(subMatrixSize, subMatrixSize),
+                      range<2>(blockSize, blockSize)},
           [=](nd_item<2> item) {
-            int globalX = item.get_global_id(1)+blockSize;
-            int globalY = item.get_global_id(0)+blockSize;
-            int blockX = item.get_group(1);
-            int blockY = item.get_group(0);
-            int localX = item.get_local_id(1);
-            int localY = item.get_local_id(0);
+            int j = item.get_global_id(1) + blockSize;
+            int i = item.get_global_id(0) + blockSize;
             double tmp = 0.0;
+            out << "i: " << i << "; j = " << j << "\n";
             for (int k = 0; k < blockSize; k++) {
-                tmp += matrixAcc[globalY][k] * matrixAcc[k][globalX];
+              tmp += matrixAcc[i][k] * matrixAcc[k][j];
             }
-            matrixAcc[globalY][globalX] -= tmp;
-          }
-      );
+            matrixAcc[i][j] -= tmp;
+          });
     });
+    Q.wait_and_throw();
   }
+
   return false;
 }
 
@@ -170,21 +174,16 @@ bool runExperiment(double* MA, size_t matSize, size_t blockSize,
 }
 
 bool compareResults(double* control, double* result, size_t matrixSize) {
-  // for (int i = 0; i < matrixSize; i++) {
-  //   for (int j = 0; j < matrixSize; j++) {
-  //     if (control[i * matrixSize + j] - result[i * matrixSize + j] > 1e-8) {
-  //       std::cout << "ALGORITHM NOT CORRECT " << result[i * matrixSize + j]
-  //                 << " != " << control[i * matrixSize + j] << std::endl;
+  for (int i = 0; i < matrixSize; i++) {
+    for (int j = 0; j < matrixSize; j++) {
+      if (control[i * matrixSize + j] - result[i * matrixSize + j] > 1e-8) {
+        std::cout << "ALGORITHM NOT CORRECT " << result[i * matrixSize + j]
+                  << " != " << control[i * matrixSize + j] << std::endl;
 
-  //       return true;
-  //     }
-  //   }
-  // }
-  std::cout << "Control" << std::endl;
-  printMatrix(control, matrixSize);
-
-  std::cout << "Result" << std::endl;
-  printMatrix(result, matrixSize);
+        return true;
+      }
+    }
+  }
 
   return false;
 }
@@ -251,10 +250,10 @@ int main(int argc, char* argv[]) {
     memcpy(controlMatrix, originalMatrix, matSize * matSize * sizeof(double));
     luSequential(controlMatrix, matSize, matSize, matSize);
   }
-  // std::cout << "***** Original" << std::endl;
-  // printMatrix(originalMatrix, matSize);
-  // std::cout << "***** Control" << std::endl;
-  // printMatrix(controlMatrix, matSize);
+  std::cout << "***** Original" << std::endl;
+  printMatrix(originalMatrix, matSize);
+  std::cout << "***** Control" << std::endl;
+  printMatrix(controlMatrix, matSize);
 
   if (gpu) {
     std::cout << "***** GPU" << std::endl;
@@ -262,8 +261,12 @@ int main(int argc, char* argv[]) {
 
     error = runExperiment(MA, matSize, blockSize, gpu_selector{});
     // printMatrix(MA, matSize);
-    if (matSize < 128 && !error)
+    if (matSize < 128 && !error) {
+      std::cout << "** Result" << std::endl;
+      printMatrix(MA, matSize);
+
       error = compareResults(controlMatrix, MA, matSize);
+    }
 
     std::cout << (error ? "Error in computation." : "Success") << std::endl;
   }
@@ -272,8 +275,11 @@ int main(int argc, char* argv[]) {
     memcpy(MA, originalMatrix, matSize * matSize * sizeof(double));
 
     error = runExperiment(MA, matSize, blockSize, cpu_selector{});
-    if (matSize < 128 && !error)
+    if (matSize < 128 && !error) {
+      std::cout << "** Result" << std::endl;
+      printMatrix(MA, matSize);
       error = compareResults(controlMatrix, MA, matSize);
+    }
 
     std::cout << (error ? "Error in computation." : "Success") << std::endl;
   }
