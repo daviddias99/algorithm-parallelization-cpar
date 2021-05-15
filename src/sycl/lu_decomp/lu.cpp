@@ -31,8 +31,7 @@ void printMatrix(double* matrix, size_t size) {
   }
 }
 
-template <typename T>
-bool luFactorization(T* MA, size_t matSize, size_t blockSize,
+bool luFactorization(double* MA, size_t matSize, size_t blockSize,
                      const device_selector& selector) {
   queue Q(selector, [&](exception_list eL) {
     try {
@@ -43,101 +42,104 @@ bool luFactorization(T* MA, size_t matSize, size_t blockSize,
       std::cout << " An exception has been thrown: " << e.what() << std::endl;
     }
   });
+  double *diagonalBlock, *factorizedColumns, *factorizedRows, *subMatrix, *a10;
+  size_t k, offsetK, offsetI, i, rowOffsetI, j, subMatrixSize,
+      currentDiagonalIdx, ii, jj, rowOffsetK;
 
-  for (size_t currentDiagonalIdx = 0; currentDiagonalIdx < matSize;
+  for (currentDiagonalIdx = 0; currentDiagonalIdx < matSize;
        currentDiagonalIdx += blockSize) {
-    for (size_t k = currentDiagonalIdx;
-         k < blockSize + currentDiagonalIdx && MA[k * matSize + k] != 0; k++) {
-      for (size_t i = k + 1; i < currentDiagonalIdx + blockSize; i++) {
-        MA[i * matSize + k] /= MA[k * matSize + k];
-      }
+    // Get current diagonal block start address (A00)
+    diagonalBlock = MA + currentDiagonalIdx * matSize + currentDiagonalIdx;
 
-      for (size_t i = k + 1; i < currentDiagonalIdx + blockSize; i++) {
-        for (size_t j = k + 1; j < currentDiagonalIdx + blockSize; j++) {
-          MA[i * matSize + j] -= MA[i * matSize + k] * MA[k * matSize + j];
-        }
-      }
-    }
+    // Do LU factorization of block A00
+    { luSequential(diagonalBlock, blockSize, blockSize, matSize); }
 
     if (matSize - currentDiagonalIdx <= blockSize) break;
 
-    for (size_t ii = currentDiagonalIdx; ii < matSize - blockSize;
+    // Do LU factorization of block A10
+    a10 = diagonalBlock + matSize * blockSize;
+
+    // TODO: make both loops parallel with each other
+    for (ii = 0; ii < matSize - currentDiagonalIdx - blockSize;
          ii += blockSize) {
-      for (size_t k = currentDiagonalIdx; k < currentDiagonalIdx + blockSize;
-           k++) {
-        for (size_t i = ii; i < ii + blockSize; i++) {
-          MA[(i + blockSize) * matSize + k] /= MA[k * matSize + k];
+      for (k = 0; k < blockSize && MA[k * matSize + k] != 0; k++) {
+        offsetK = k * matSize;
+        for (i = ii; i < ii + blockSize; i++) {
+          a10[i * matSize + k] /= diagonalBlock[offsetK + k];
         }
 
-        for (size_t i = ii; i < ii + blockSize; i++) {
-          for (size_t j = k + 1; j < currentDiagonalIdx + blockSize; j++) {
-            MA[(i + blockSize) * matSize + j] -=
-                MA[(i + blockSize) * matSize + k] * MA[k * matSize + j];
+        for (i = ii; i < ii + blockSize; i++) {
+          offsetI = i * matSize;
+          for (j = k + 1; j < blockSize; j++) {
+            a10[offsetI + j] -= a10[offsetI + k] * diagonalBlock[offsetK + j];
           }
         }
       }
     }
 
-    for (size_t jj = currentDiagonalIdx + blockSize; jj < matSize;
-         jj += blockSize) {
-      for (size_t k = currentDiagonalIdx; k < currentDiagonalIdx + blockSize;
+    // Do LU factorization for block A01
+    for (jj = currentDiagonalIdx + blockSize; jj < matSize; jj += blockSize) {
+      for (k = currentDiagonalIdx;
+           MA[k * matSize + k] != 0 && k < currentDiagonalIdx + blockSize;
            k++) {
-        for (size_t i = k + 1; i < currentDiagonalIdx + blockSize; i++) {
-          for (size_t j = jj; j < jj + blockSize; j++) {
-            MA[i * matSize + j] -= MA[i * matSize + k] * MA[k * matSize + j];
+        offsetK = k * matSize;
+        for (i = k + 1; i < currentDiagonalIdx + blockSize; i++) {
+          rowOffsetI = i * matSize;
+          for (j = jj; j < jj + blockSize; j++) {
+            MA[rowOffsetI + j] -= MA[rowOffsetI + k] * MA[offsetK + j];
           }
         }
       }
     }
 
-    for (size_t ii = currentDiagonalIdx + blockSize; ii < matSize;
-         ii += blockSize)
-      for (size_t jj = currentDiagonalIdx + blockSize; jj < matSize;
-           jj += blockSize) {
-        for (size_t i = ii; i < ii + blockSize; i++) {
-          for (size_t k = currentDiagonalIdx;
-               k < currentDiagonalIdx + blockSize; k++) {
-            for (size_t j = jj; j < jj + blockSize; j++) {
-              MA[i * matSize + j] -= MA[i * matSize + k] * MA[k * matSize + j];
-            }
-          }
-        }
-      }
+    // // Calculate addresses of blocks A10, A01 and A11
+    // factorizedColumns = diagonalBlock + blockSize * matSize;
+    // factorizedRows = diagonalBlock + blockSize;
+    // subMatrix = diagonalBlock + blockSize * matSize + blockSize;
 
-    T* A_device = malloc_device<T>(
-        (matSize - currentDiagonalIdx) * (matSize - currentDiagonalIdx), Q);
+    // subMatrixSize = matSize - (blockSize + currentDiagonalIdx);
 
-    Q.memcpy(A_device, &MA[currentDiagonalIdx * matSize + currentDiagonalIdx],
-             (matSize - currentDiagonalIdx) * (matSize - currentDiagonalIdx) *
-                 sizeof(T))
-        .wait();
+    // // Update A11
+    // for (ii = 0; ii < subMatrixSize; ii += blockSize)
+    //   for (jj = 0; jj < subMatrixSize; jj += blockSize) {
+    //     for (i = ii; i < ii + blockSize; i++) {
+    //       rowOffsetI = i * matSize;
+    //       for (k = 0; k < blockSize; k++) {
+    //         rowOffsetK = k * matSize;
+    //         for (j = jj; j < jj + blockSize; j++) {
+    //           subMatrix[rowOffsetI + j] -= factorizedColumns[rowOffsetI + k] *
+    //                                        factorizedRows[rowOffsetK + j];
+    //         }
+    //       }
+    //     }
+    //   }
+
+    range<2> dimensions(matSize - currentDiagonalIdx,
+                        matSize - currentDiagonalIdx);
+    const property_list props = {};
+    buffer<double, 2> matrix(diagonalBlock, dimensions, props);
+
     Q.submit([&](handler& h) {
+      auto matrixAcc = matrix.template get_access<access::mode::read_write>(h);
+
       h.parallel_for<lu_kernel>(
-          range<2>{matSize - currentDiagonalIdx - blockSize,
-                   matSize - currentDiagonalIdx - blockSize},
-          [=](id<2> idx) {
-            int j = blockSize + idx[0];
-            int i = blockSize + idx[1];
-
-            for (int k = currentDiagonalIdx; k < currentDiagonalIdx + blockSize;
-                 ++k) {
-              A_device[j * (matSize - currentDiagonalIdx) + i] -=
-                  A_device[j * (matSize - currentDiagonalIdx) + k] *
-                  A_device[k * (matSize - currentDiagonalIdx) + i];
+          nd_range<2>{range<2>(subMatrixSize, subMatrixSize), range<2>(blockSize, blockSize)},
+          [=](nd_item<2> item) {
+            int globalX = item.get_global_id(1)+blockSize;
+            int globalY = item.get_global_id(0)+blockSize;
+            int blockX = item.get_group(1);
+            int blockY = item.get_group(0);
+            int localX = item.get_local_id(1);
+            int localY = item.get_local_id(0);
+            double tmp = 0.0;
+            for (int k = 0; k < blockSize; k++) {
+                tmp += matrixAcc[globalY][k] * matrixAcc[k][globalX];
             }
-          });
+            matrixAcc[globalY][globalX] -= tmp;
+          }
+      );
     });
-    Q.wait();
-
-    Q.memcpy(&MA[(currentDiagonalIdx + blockSize) * matSize +
-                 (currentDiagonalIdx + blockSize)],
-             &A_device[blockSize * (matSize - currentDiagonalIdx - blockSize) +
-                       blockSize],
-             (matSize - currentDiagonalIdx - blockSize) *
-                 (matSize - currentDiagonalIdx - blockSize) * sizeof(T))
-        .wait();
   }
-
   return false;
 }
 
@@ -151,8 +153,7 @@ void usage(std::string programName) {
             << " Default is to use both " << std::endl;
 }
 
-template <typename T>
-bool runExperiment(T* MA, size_t matSize, size_t blockSize,
+bool runExperiment(double* MA, size_t matSize, size_t blockSize,
                    const device_selector& selector) {
   auto start = std::chrono::steady_clock::now();
   bool error = luFactorization(MA, matSize, blockSize, selector);
@@ -169,16 +170,21 @@ bool runExperiment(T* MA, size_t matSize, size_t blockSize,
 }
 
 bool compareResults(double* control, double* result, size_t matrixSize) {
-  for (int i = 0; i < matrixSize; i++) {
-    for (int j = 0; j < matrixSize; j++) {
-      if (control[i * matrixSize + j] - result[i * matrixSize + j] > 1e-8) {
-        std::cout << "ALGORITHM NOT CORRECT " << result[i * matrixSize + j]
-                  << " != " << control[i * matrixSize + j] << std::endl;
+  // for (int i = 0; i < matrixSize; i++) {
+  //   for (int j = 0; j < matrixSize; j++) {
+  //     if (control[i * matrixSize + j] - result[i * matrixSize + j] > 1e-8) {
+  //       std::cout << "ALGORITHM NOT CORRECT " << result[i * matrixSize + j]
+  //                 << " != " << control[i * matrixSize + j] << std::endl;
 
-        return true;
-      }
-    }
-  }
+  //       return true;
+  //     }
+  //   }
+  // }
+  std::cout << "Control" << std::endl;
+  printMatrix(control, matrixSize);
+
+  std::cout << "Result" << std::endl;
+  printMatrix(result, matrixSize);
 
   return false;
 }
@@ -210,7 +216,7 @@ int main(int argc, char* argv[]) {
 
   size_t blockSize = 0;
   try {
-    blockSize = std::stoi(argv[1]);
+    blockSize = std::stoi(argv[2]);
   } catch (...) {
     usage(argv[0]);
     return 1;
