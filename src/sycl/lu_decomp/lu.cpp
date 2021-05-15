@@ -115,27 +115,32 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize,
     //     }
     //   }
 
-    range<2> dimensions(matSize - currentDiagonalIdx,
-                        matSize - currentDiagonalIdx);
-    const property_list props = {};
-    buffer<double, 2> matrix(diagonalBlock, dimensions, props);
-
     subMatrixSize = matSize - (blockSize + currentDiagonalIdx);
 
-    std::cout << "SubMatrixSize " << subMatrixSize << std::endl;
+    std::cout << "SubMatSize " << subMatrixSize << std::endl;
+
+    range<2> dimensions((matSize), (matSize));
+    const property_list props = {};
+    buffer<double, 2> matrix(MA, dimensions, props);
+
     Q.submit([&](handler& h) {
       auto matrixAcc = matrix.template get_access<access::mode::read_write>(h);
-      sycl::stream out(1024, 256, h);
 
       h.parallel_for<lu_kernel>(
           nd_range<2>{range<2>(subMatrixSize, subMatrixSize),
                       range<2>(blockSize, blockSize)},
           [=](nd_item<2> item) {
-            int j = item.get_global_id(1) + blockSize;
-            int i = item.get_global_id(0) + blockSize;
+            int j = item.get_global_id(1) + blockSize + currentDiagonalIdx;
+            int i = item.get_global_id(0) + blockSize + currentDiagonalIdx;
             double tmp = 0.0;
-            out << "i: " << i << "; j = " << j << "\n";
-            for (int k = 0; k < blockSize; k++) {
+
+            // printf("Global item (%ld,%ld)!\n", item.get_global_id(0),
+            //        item.get_global_id(1));
+
+            for (int k = currentDiagonalIdx; k < currentDiagonalIdx + blockSize;
+                 k++) {
+              printf("i,j,k (%ld,%ld,%ld)!\n", i, j, k);
+
               tmp += matrixAcc[i][k] * matrixAcc[k][j];
             }
             matrixAcc[i][j] -= tmp;
