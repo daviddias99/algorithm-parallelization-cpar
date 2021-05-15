@@ -32,7 +32,8 @@ void printMatrix(double* matrix, size_t size) {
 }
 
 template <typename T>
-bool luFactorization(T* MA, size_t matSize, const device_selector& selector) {
+bool luFactorization(T* MA, size_t matSize, size_t blockSize,
+                     const device_selector& selector) {
   queue Q(selector, [&](exception_list eL) {
     try {
       for (auto& e : eL) {
@@ -43,29 +44,17 @@ bool luFactorization(T* MA, size_t matSize, const device_selector& selector) {
     }
   });
 
-  auto device = Q.get_device();
-
-  size_t blockSize = 2;
-
-  range<2> dimensions(matSize, matSize);
-  const property_list props = {property::buffer::use_host_ptr()};
-  buffer<T, 2> bA(MA, dimensions, props);
-
   for (size_t currentDiagonalIdx = 0; currentDiagonalIdx < matSize;
        currentDiagonalIdx += blockSize) {
-    auto hostAcc = bA.template get_access<sycl::access::mode::read_write>(
-        range<2>(matSize - currentDiagonalIdx, matSize - currentDiagonalIdx),
-        id<2>(currentDiagonalIdx, currentDiagonalIdx));
-
     for (size_t k = currentDiagonalIdx;
-         k < blockSize + currentDiagonalIdx && hostAcc[k][k] != 0; k++) {
+         k < blockSize + currentDiagonalIdx && MA[k * matSize + k] != 0; k++) {
       for (size_t i = k + 1; i < currentDiagonalIdx + blockSize; i++) {
-        hostAcc[i][k] /= hostAcc[k][k];
+        MA[i * matSize + k] /= MA[k * matSize + k];
       }
 
       for (size_t i = k + 1; i < currentDiagonalIdx + blockSize; i++) {
         for (size_t j = k + 1; j < currentDiagonalIdx + blockSize; j++) {
-          hostAcc[i][j] -= hostAcc[i][k] * hostAcc[k][j];
+          MA[i * matSize + j] -= MA[i * matSize + k] * MA[k * matSize + j];
         }
       }
     }
@@ -77,13 +66,13 @@ bool luFactorization(T* MA, size_t matSize, const device_selector& selector) {
       for (size_t k = currentDiagonalIdx; k < currentDiagonalIdx + blockSize;
            k++) {
         for (size_t i = ii; i < ii + blockSize; i++) {
-          hostAcc[i + blockSize][k] /= hostAcc[k][k];
+          MA[(i + blockSize) * matSize + k] /= MA[k * matSize + k];
         }
 
         for (size_t i = ii; i < ii + blockSize; i++) {
           for (size_t j = k + 1; j < currentDiagonalIdx + blockSize; j++) {
-            hostAcc[i + blockSize][j] -=
-                hostAcc[i + blockSize][k] * hostAcc[k][j];
+            MA[(i + blockSize) * matSize + j] -=
+                MA[(i + blockSize) * matSize + k] * MA[k * matSize + j];
           }
         }
       }
@@ -95,7 +84,7 @@ bool luFactorization(T* MA, size_t matSize, const device_selector& selector) {
            k++) {
         for (size_t i = k + 1; i < currentDiagonalIdx + blockSize; i++) {
           for (size_t j = jj; j < jj + blockSize; j++) {
-            hostAcc[i][j] -= hostAcc[i][k] * hostAcc[k][j];
+            MA[i * matSize + j] -= MA[i * matSize + k] * MA[k * matSize + j];
           }
         }
       }
@@ -109,11 +98,44 @@ bool luFactorization(T* MA, size_t matSize, const device_selector& selector) {
           for (size_t k = currentDiagonalIdx;
                k < currentDiagonalIdx + blockSize; k++) {
             for (size_t j = jj; j < jj + blockSize; j++) {
-              hostAcc[i][j] -= hostAcc[i][k] * hostAcc[k][j];
+              MA[i * matSize + j] -= MA[i * matSize + k] * MA[k * matSize + j];
             }
           }
         }
       }
+
+    T* A_device = malloc_device<T>(
+        (matSize - currentDiagonalIdx) * (matSize - currentDiagonalIdx), Q);
+
+    Q.memcpy(A_device, &MA[currentDiagonalIdx * matSize + currentDiagonalIdx],
+             (matSize - currentDiagonalIdx) * (matSize - currentDiagonalIdx) *
+                 sizeof(T))
+        .wait();
+    Q.submit([&](handler& h) {
+      h.parallel_for<lu_kernel>(
+          range<2>{matSize - currentDiagonalIdx - blockSize,
+                   matSize - currentDiagonalIdx - blockSize},
+          [=](id<2> idx) {
+            int j = blockSize + idx[0];
+            int i = blockSize + idx[1];
+
+            for (int k = currentDiagonalIdx; k < currentDiagonalIdx + blockSize;
+                 ++k) {
+              A_device[j * (matSize - currentDiagonalIdx) + i] -=
+                  A_device[j * (matSize - currentDiagonalIdx) + k] *
+                  A_device[k * (matSize - currentDiagonalIdx) + i];
+            }
+          });
+    });
+    Q.wait();
+
+    Q.memcpy(&MA[(currentDiagonalIdx + blockSize) * matSize +
+                 (currentDiagonalIdx + blockSize)],
+             &A_device[blockSize * (matSize - currentDiagonalIdx - blockSize) +
+                       blockSize],
+             (matSize - currentDiagonalIdx - blockSize) *
+                 (matSize - currentDiagonalIdx - blockSize) * sizeof(T))
+        .wait();
   }
 
   return false;
@@ -130,9 +152,10 @@ void usage(std::string programName) {
 }
 
 template <typename T>
-bool runExperiment(T* MA, size_t matSize, const device_selector& selector) {
+bool runExperiment(T* MA, size_t matSize, size_t blockSize,
+                   const device_selector& selector) {
   auto start = std::chrono::steady_clock::now();
-  bool error = luFactorization(MA, matSize, selector);
+  bool error = luFactorization(MA, matSize, blockSize, selector);
   auto end = std::chrono::steady_clock::now();
   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
                   .count();
@@ -165,7 +188,7 @@ int main(int argc, char* argv[]) {
   bool cpu = true;
   bool error = false;
 
-  if (argc != 2 && argc != 3) {
+  if (argc != 3 && argc != 4) {
     usage(argv[0]);
     return 1;
   }
@@ -180,16 +203,24 @@ int main(int argc, char* argv[]) {
 
   srand(time(NULL));
 
-  if (matSize < 2) {
+  if (matSize < 3) {
     usage(argv[0]);
     return 1;
   }
 
-  if (argc == 3) {
-    if (std::string(argv[2]) == "gpu") {
+  size_t blockSize = 0;
+  try {
+    blockSize = std::stoi(argv[1]);
+  } catch (...) {
+    usage(argv[0]);
+    return 1;
+  }
+
+  if (argc == 4) {
+    if (std::string(argv[3]) == "gpu") {
       gpu = true;
       cpu = false;
-    } else if (std::string(argv[2]) == "cpu") {
+    } else if (std::string(argv[3]) == "cpu") {
       gpu = false;
       cpu = true;
     } else {
@@ -210,9 +241,10 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  memcpy(controlMatrix, originalMatrix, matSize * matSize * sizeof(double));
-  luSequential(controlMatrix, matSize, matSize, matSize);
-
+  if (matSize < 128) {
+    memcpy(controlMatrix, originalMatrix, matSize * matSize * sizeof(double));
+    luSequential(controlMatrix, matSize, matSize, matSize);
+  }
   // std::cout << "***** Original" << std::endl;
   // printMatrix(originalMatrix, matSize);
   // std::cout << "***** Control" << std::endl;
@@ -222,9 +254,10 @@ int main(int argc, char* argv[]) {
     std::cout << "***** GPU" << std::endl;
     memcpy(MA, originalMatrix, matSize * matSize * sizeof(double));
 
-    error = runExperiment(MA, matSize, gpu_selector{});
+    error = runExperiment(MA, matSize, blockSize, gpu_selector{});
     // printMatrix(MA, matSize);
-    if (!error) error = compareResults(controlMatrix, MA, matSize);
+    if (matSize < 128 && !error)
+      error = compareResults(controlMatrix, MA, matSize);
 
     std::cout << (error ? "Error in computation." : "Success") << std::endl;
   }
@@ -232,8 +265,9 @@ int main(int argc, char* argv[]) {
     std::cout << "***** CPU" << std::endl;
     memcpy(MA, originalMatrix, matSize * matSize * sizeof(double));
 
-    error = runExperiment(MA, matSize, cpu_selector{});
-    if (!error) error = compareResults(controlMatrix, MA, matSize);
+    error = runExperiment(MA, matSize, blockSize, cpu_selector{});
+    if (matSize < 128 && !error)
+      error = compareResults(controlMatrix, MA, matSize);
 
     std::cout << (error ? "Error in computation." : "Success") << std::endl;
   }

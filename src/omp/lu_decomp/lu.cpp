@@ -79,10 +79,12 @@ int main(int argc, char *argv[]) {
     // We do this here instead of inside the functions to avoid affecting the
     // times of execution
     // Start counting
-    luSequential(controlMatrix, matrixSize, matrixSize, matrixSize);
+    if (matrixSize < 128) {
+      luSequential(controlMatrix, matrixSize, matrixSize, matrixSize);
+    }
     // cout << "-------- CONTROL --------" << endl;
     // printMatrix(controlMatrix, matrixSize);
-    auto begin = std::chrono::high_resolution_clock::now();
+    auto begin = std::chrono::steady_clock::now();
     switch (op) {
       case 1:
         break;
@@ -97,24 +99,24 @@ int main(int argc, char *argv[]) {
         break;
     }
 
-
-
     // cout << "-------- RES --------" << endl;
     // printMatrix(controlMatrix, matrixSize);
-    auto end = chrono::high_resolution_clock::now();
-    auto elapsed = chrono::duration_cast<chrono::microseconds>(end - begin);
+    auto end = chrono::steady_clock::now();
+    auto elapsed = chrono::duration_cast<chrono::milliseconds>(end - begin);
 
     cout << op << " " << matrixSize << " " << blockSize << " "
-         << elapsed.count() / 1000000.0 << endl;
+         << elapsed.count() << endl;
   }
 
-  for (int i = 0; i < matrixSize; i++) {
-    for (int j = 0; j < matrixSize; j++) {
-      if (opMatrix[i * matrixSize + j] != controlMatrix[i * matrixSize + j]) {
-        cout << "ALGORITHM NOT CORRECT " << opMatrix[i * matrixSize + j]
-             << " != " << controlMatrix[i * matrixSize + j] << endl;
+  if (matrixSize < 128) {
+    for (int i = 0; i < matrixSize; i++) {
+      for (int j = 0; j < matrixSize; j++) {
+        if (opMatrix[i * matrixSize + j] != controlMatrix[i * matrixSize + j]) {
+          cout << "ALGORITHM NOT CORRECT " << opMatrix[i * matrixSize + j]
+               << " != " << controlMatrix[i * matrixSize + j] << endl;
 
-        return -1;
+          return -1;
+        }
       }
     }
   }
