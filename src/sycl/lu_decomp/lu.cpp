@@ -117,8 +117,7 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize,
 
     subMatrixSize = matSize - (blockSize + currentDiagonalIdx);
 
-    std::cout << "SubMatSize " << subMatrixSize << std::endl;
-
+    // std::cout << "SubMatSize " << subMatrixSize << std::endl;
     range<2> dimensions((matSize), (matSize));
     const property_list props = {};
     buffer<double, 2> matrix(MA, dimensions, props);
@@ -139,7 +138,7 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize,
 
             for (int k = currentDiagonalIdx; k < currentDiagonalIdx + blockSize;
                  k++) {
-              printf("i,j,k (%ld,%ld,%ld)!\n", i, j, k);
+              // printf("i,j,k (%ld,%ld,%ld)!\n", i, j, k);
 
               tmp += matrixAcc[i][k] * matrixAcc[k][j];
             }
@@ -172,7 +171,7 @@ bool runExperiment(double* MA, size_t matSize, size_t blockSize,
 
   std::cout << "Time: " << time << std::endl;
   float flops =
-      (2.0f * matSize * matSize * matSize / (time / 1000.0f)) * 1.0e-9f;
+      (2.0f/3 * matSize * matSize * matSize / (time / 1000.0f)) * 1.0e-9f;
   std::cout << "TODO: calcular isto direito: GFLOPs: " << flops << std::endl;
 
   return error;
@@ -256,9 +255,9 @@ int main(int argc, char* argv[]) {
     luSequential(controlMatrix, matSize, matSize, matSize);
   }
   std::cout << "***** Original" << std::endl;
-  printMatrix(originalMatrix, matSize);
+  // printMatrix(originalMatrix, matSize);
   std::cout << "***** Control" << std::endl;
-  printMatrix(controlMatrix, matSize);
+  // printMatrix(controlMatrix, matSize);
 
   if (gpu) {
     std::cout << "***** GPU" << std::endl;
@@ -268,7 +267,7 @@ int main(int argc, char* argv[]) {
     // printMatrix(MA, matSize);
     if (matSize < 128 && !error) {
       std::cout << "** Result" << std::endl;
-      printMatrix(MA, matSize);
+      // printMatrix(MA, matSize);
 
       error = compareResults(controlMatrix, MA, matSize);
     }
@@ -282,7 +281,7 @@ int main(int argc, char* argv[]) {
     error = runExperiment(MA, matSize, blockSize, cpu_selector{});
     if (matSize < 128 && !error) {
       std::cout << "** Result" << std::endl;
-      printMatrix(MA, matSize);
+      // printMatrix(MA, matSize);
       error = compareResults(controlMatrix, MA, matSize);
     }
 
