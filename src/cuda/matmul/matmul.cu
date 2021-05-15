@@ -4,7 +4,7 @@
 
 using namespace std;
 
-#define TILE_WIDTH 16
+#define TILE_WIDTH 32
 
 __global__ void MatrixMulKernel(double *Md, double *Nd, double *Pd, int width) {
   __shared__ double Mds[TILE_WIDTH][TILE_WIDTH];
@@ -29,6 +29,19 @@ __global__ void MatrixMulKernel(double *Md, double *Nd, double *Pd, int width) {
 
   Pd[Row*width+Col] = Pvalue; 
 }
+
+__global__ void MatrixMulKernelBlock(double* Md, double* Nd, double* Pd, int Width)
+{
+  // Calculate the row index of the Pd element and M
+  int Row = blockIdx.y*TILE_WIDTH + threadIdx.y;
+  // Calculate the column idenx of Pd and N
+  int Col = blockIdx.x*TILE_WIDTH + threadIdx.x;
+  double Pvalue = 0;
+  // each thread computes one element of the block sub-matrix
+  for (int k = 0; k < Width; ++k)
+    Pvalue += Md[Row * Width + k] * Nd[k * Width + Col];
+  Pd[Row * Width + Col] = Pvalue;
+} 
 
 
 
@@ -63,21 +76,23 @@ int main(int argc, char *argv[]) {
 
   for(int i = 0; i < runs; i++) {
     // Start counting
-    auto begin = std::chrono::high_resolution_clock::now();
-    MatrixMulKernel<<<dimGrid, dimBlock>>>(Md, Nd, Pd, matrixSize);
-
-    auto end = chrono::high_resolution_clock::now();
-    auto elapsed = chrono::duration_cast<chrono::microseconds>(end - begin);
+    auto begin = std::chrono::steady_clock::now();
+    MatrixMulKernelBlock<<<dimGrid, dimBlock>>>(Md, Nd, Pd, matrixSize);
+    cudaDeviceSynchronize(); 
+    auto end = std::chrono::steady_clock::now();
+    auto elapsed = chrono::duration_cast<std::chrono::milliseconds>(end - begin);
     cout << 1 << " " << matrixSize << " " << TILE_WIDTH << " " << elapsed.count()/ 1000000.0 << endl;
+    float flops =(2.0f * matrixSize * matrixSize * matrixSize / (elapsed.count() / 1000.0f)) * 1.0e-9f;
+    cout << flops << endl;
   }
-  cudaMemcpy(P, Pd, matrixSize*matrixSize * sizeof(double), cudaMemcpyDeviceToHost);
 
-  for (int i = 0; i < matrixSize; i++){
-    for (int j = 0; j < matrixSize; j++){
-      cout  << P[i * matrixSize + j];
-    }
-    cout << endl;
-  }
+  cudaMemcpy(P, Pd, matrixSize*matrixSize * sizeof(double), cudaMemcpyDeviceToHost);
+  // for (int i = 0; i < matrixSize; i++){
+  //   for (int j = 0; j < matrixSize; j++){
+  //     cout  << P[i * matrixSize + j];
+  //   }
+  //   cout << endl;
+  // }
 
   cudaFree(Md);
   cudaFree(Nd);

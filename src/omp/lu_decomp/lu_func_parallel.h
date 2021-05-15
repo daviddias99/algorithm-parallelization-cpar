@@ -75,6 +75,8 @@ void luFuncParallel(double* matrix, size_t size, size_t blockSize) {
 
       // Do LU factorization of block A10
       a10 = diagonalBlock + size * blockSize;
+
+      // TODO: make both loops parallel with each other
 #pragma omp taskloop
       for (size_t ii = 0; ii < size - currentDiagonalIdx - blockSize;
            ii += blockSize) {

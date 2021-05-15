@@ -99,6 +99,8 @@ bool matmulBlocks(T* MA, T* MB, T* MC, size_t matSize,
   auto blockSize = prevPowerOfTwo(std::sqrt(maxWorkGroupSize));
   std::cout << " The Device Max Work Group Size is : " << maxWorkGroupSize
             << std::endl;
+  std::cout << " The Device size of local memory in bytes is : " << localMemSize
+            << std::endl;
   std::cout << " The order is : " << matSize << std::endl;
   std::cout << " The blockSize is : " << blockSize << std::endl;
 
@@ -106,7 +108,7 @@ bool matmulBlocks(T* MA, T* MB, T* MC, size_t matSize,
 
   {
     range<1> dimensions(matSize * matSize);
-    const property_list props = {property::buffer::use_host_ptr()};
+    const property_list props = {};
     buffer<T> bA(MA, dimensions, props);
     buffer<T> bB(MB, dimensions, props);
     buffer<T> bC(MC, dimensions, props);
