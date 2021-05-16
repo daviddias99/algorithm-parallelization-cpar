@@ -11,8 +11,6 @@
 
 using namespace cl::sycl;
 
-#define TEST_MODE false
-
 template <typename T>
 bool runExperiments(T* MA, T* MB, T* MC, size_t matSize, size_t blockSize, int op,
                     const device_selector& selector, int numExperiments) {
@@ -26,10 +24,10 @@ bool runExperiments(T* MA, T* MB, T* MC, size_t matSize, size_t blockSize, int o
         error = matmulNaive(MA, MB, MC, matSize, selector);
         break;
       case 2:
-        error = matmulBlocks(MA, MB, MC, matSize, selector);
+        error = matmulBlocks(MA, MB, MC, matSize, blockSize, selector);
         break;
       case 3:
-        error = matmulBlocksLocalMem(MA, MB, MC, matSize, selector);
+        error = matmulBlocksLocalMem(MA, MB, MC, matSize, blockSize, selector);
         break;
       default:
         error = true;

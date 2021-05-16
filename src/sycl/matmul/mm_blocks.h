@@ -7,7 +7,7 @@ class matmul_kernel_blocks;
 using namespace cl::sycl;
 
 template <typename T>
-bool matmulBlocks(T* MA, T* MB, T* MC, size_t matSize,
+bool matmulBlocks(T* MA, T* MB, T* MC, size_t matSize, size_t blockSize,
                   const device_selector& selector) {
   if (!isPowerOfTwo(matSize)) {
     return true;
@@ -23,19 +23,23 @@ bool matmulBlocks(T* MA, T* MB, T* MC, size_t matSize,
     }
   });
 
-  auto device = Q.get_device();
-  auto maxWorkGroupSize =
-      device.get_info<cl::sycl::info::device::max_work_group_size>();
-  auto localMemSize = device.get_info<cl::sycl::info::device::local_mem_size>();
-  auto blockSize = prevPowerOfTwo(std::sqrt(maxWorkGroupSize));
-  std::cout << " The Device Max Work Group Size is : " << maxWorkGroupSize
-            << std::endl;
-  std::cout << " The Device size of local memory in bytes is : " << localMemSize
-            << std::endl;
-  std::cout << " The order is : " << matSize << std::endl;
-  std::cout << " The blockSize is : " << blockSize << std::endl;
+  if(TEST_MODE) {
 
-  blockSize = std::min((int)matSize, blockSize);
+    auto device = Q.get_device();
+    auto maxWorkGroupSize =
+        device.get_info<cl::sycl::info::device::max_work_group_size>();
+    auto localMemSize = device.get_info<cl::sycl::info::device::local_mem_size>();
+    auto blockSize = prevPowerOfTwo(std::sqrt(maxWorkGroupSize));
+    std::cout << " The Device Max Work Group Size is : " << maxWorkGroupSize
+              << std::endl;
+    std::cout << " The Device size of local memory in bytes is : " << localMemSize
+              << std::endl;
+    std::cout << " The order is : " << matSize << std::endl;
+    std::cout << " The blockSize is : " << blockSize << std::endl;
+
+    blockSize = std::min((int)matSize, blockSize);
+  }
+
 
   {
     range<1> dimensions(matSize * matSize);

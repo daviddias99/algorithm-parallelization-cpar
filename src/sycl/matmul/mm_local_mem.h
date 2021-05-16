@@ -8,8 +8,12 @@ using namespace cl::sycl;
 class matmul_kernel_local_mem;
 
 template <typename T>
-bool matmulBlocksLocalMem(T* MA, T* MB, T* MC, size_t matSize,
-                          const device_selector& selector) {
+bool matmulBlocksLocalMem(T* MA, T* MB, T* MC, size_t matSize, size_t blockSize,
+                  const device_selector& selector) {
+  if (!isPowerOfTwo(matSize)) {
+    return true;
+  }
+
   queue Q(selector, [&](exception_list eL) {
     try {
       for (auto& e : eL) {
@@ -20,24 +24,23 @@ bool matmulBlocksLocalMem(T* MA, T* MB, T* MC, size_t matSize,
     }
   });
 
-  auto device = Q.get_device();
-  auto maxWorkGroupSize =
-      device.get_info<cl::sycl::info::device::max_work_group_size>();
-  auto localMemSize = device.get_info<cl::sycl::info::device::local_mem_size>();
-  auto blockSize = prevPowerOfTwo(std::sqrt(maxWorkGroupSize));
-  std::cout << " The Device max work group size is : " << maxWorkGroupSize
-            << std::endl;
-  std::cout << " The Device size of local memory in bytes is : " << localMemSize
-            << std::endl;
-  std::cout << " The matrixSize is : " << matSize << std::endl;
+  if(TEST_MODE) {
 
-  if (localMemSize < 2 * blockSize * blockSize * sizeof(T)) {
-    blockSize = prevPowerOfTwo(std::sqrt(localMemSize / 2 / sizeof(T)));
+    auto device = Q.get_device();
+    auto maxWorkGroupSize =
+        device.get_info<cl::sycl::info::device::max_work_group_size>();
+    auto localMemSize = device.get_info<cl::sycl::info::device::local_mem_size>();
+    auto blockSize = prevPowerOfTwo(std::sqrt(maxWorkGroupSize));
+    std::cout << " The Device Max Work Group Size is : " << maxWorkGroupSize
+              << std::endl;
+    std::cout << " The Device size of local memory in bytes is : " << localMemSize
+              << std::endl;
+    std::cout << " The order is : " << matSize << std::endl;
+    std::cout << " The blockSize is : " << blockSize << std::endl;
+
+    blockSize = std::min((int)matSize, blockSize);
   }
 
-  std::cout << " The blockSize is : " << blockSize << std::endl;
-
-  blockSize = std::min((int)matSize, blockSize);
 
   {
     range<1> dimensions(matSize * matSize);
