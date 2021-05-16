@@ -4,7 +4,7 @@
 #include <CL/sycl.hpp>
 #include <iostream>
 
-#define TEST_MODE false
+#define TEST_MODE true
 
 using namespace cl::sycl;
 
@@ -43,6 +43,8 @@ void usage(std::string programName) {
 
 template <typename T>
 void testError(bool& error, size_t matSize, T* MB, T* MC) {
+
+  std::cout << MC[matSize*(matSize - 1) + matSize - 1] << std::endl;
   if (!error) {
     error = false;
     // Testing

@@ -69,23 +69,18 @@ bool matmulBlocksLocalMem(T* MA, T* MB, T* MC, size_t matSize, size_t blockSize,
             int localX = item.get_local_id(1);
             int localY = item.get_local_id(0);
 
-            // Start index for A matrix
-            int a_start = matSize * blockSize * blockY;
-            // End index for A matrix
-            int a_end = a_start + matSize - 1;
-            // Start index for B matrix
-            int b_start = blockSize * blockX;
+            int Row = blockY * blockSize + localY;
+            int Col = blockX * blockSize + localX;
 
             // Result for the current C(i,j) element
             T tmp = 0.0f;
 
-            for (int a = a_start, b = b_start; a <= a_end;
-                 a += blockSize, b += (blockSize * matSize)) {
+            for (int m = 0; m < matSize / blockSize; ++m) {
               // Coolaborative loading of blocks into shared memory
               pBA[localY * blockSize + localX] =
-                  pA[a + matSize * localY + localX];
-              pBB[localX * blockSize + localY] =
-                  pB[b + matSize * localY + localX];
+                  pA[Row * matSize + (m * blockSize + localX)];
+              pBB[localY * blockSize + localX] =
+                  pB[Col + (m * blockSize + localY) * matSize];
 
               item.barrier(access::fence_space::local_space);
 
