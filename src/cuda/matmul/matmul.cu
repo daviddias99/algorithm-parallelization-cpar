@@ -5,6 +5,7 @@
 using namespace std;
 
 #define TILE_WIDTH 32
+#define TEST_MODE = true
 
 __global__ void MatrixMulKernel(double *Md, double *Nd, double *Pd, int width) {
   __shared__ double Mds[TILE_WIDTH][TILE_WIDTH];
@@ -43,8 +44,6 @@ __global__ void MatrixMulKernelBlock(double* Md, double* Nd, double* Pd, int Wid
   Pd[Row * Width + Col] = Pvalue;
 } 
 
-
-
 int main(int argc, char *argv[]) {
 
   // Get arguments
@@ -80,20 +79,16 @@ int main(int argc, char *argv[]) {
     MatrixMulKernelBlock<<<dimGrid, dimBlock>>>(Md, Nd, Pd, matrixSize);
     cudaDeviceSynchronize(); 
     auto end = std::chrono::steady_clock::now();
-    auto elapsed = chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+    auto elapsed = chrono::duration_cast<std::chrono::microseconds>(end - begin);
     cout << 1 << " " << matrixSize << " " << TILE_WIDTH << " " << elapsed.count()/ 1000000.0 << endl;
-    float flops =(2.0f * matrixSize * matrixSize * matrixSize / (elapsed.count() / 1000.0f)) * 1.0e-9f;
-    cout << flops << endl;
+    
+    if(TEST_MODE){
+      float flops =(2.0f * matrixSize * matrixSize * matrixSize / (elapsed.count() / 1000000.0f)) * 1.0e-9f;
+      cout << flops << endl;
+    }
   }
 
   cudaMemcpy(P, Pd, matrixSize*matrixSize * sizeof(double), cudaMemcpyDeviceToHost);
-  // for (int i = 0; i < matrixSize; i++){
-  //   for (int j = 0; j < matrixSize; j++){
-  //     cout  << P[i * matrixSize + j];
-  //   }
-  //   cout << endl;
-  // }
-
   cudaFree(Md);
   cudaFree(Nd);
   cudaFree(Pd);

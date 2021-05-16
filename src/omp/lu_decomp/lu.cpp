@@ -12,6 +12,8 @@
 #include "lu_seq.h"
 using namespace std;
 
+#define TEST_MODE true
+
 int getRandBetween(int min, int max) { return rand() % (max - min + 1) + min; }
 
 void printMatrix(double *matrix, size_t size) {
@@ -79,7 +81,7 @@ int main(int argc, char *argv[]) {
     // We do this here instead of inside the functions to avoid affecting the
     // times of execution
     // Start counting
-    if (matrixSize < 128) {
+    if (matrixSize < 128 && TEST_MODE) {
       luSequential(controlMatrix, matrixSize, matrixSize, matrixSize);
     }
     // cout << "-------- CONTROL --------" << endl;
@@ -87,6 +89,7 @@ int main(int argc, char *argv[]) {
     auto begin = std::chrono::steady_clock::now();
     switch (op) {
       case 1:
+        luSequential(controlMatrix, matrixSize, matrixSize, matrixSize);
         break;
       case 2:
         luBlocks(opMatrix, matrixSize, blockSize);
@@ -108,7 +111,7 @@ int main(int argc, char *argv[]) {
          << elapsed.count() << endl;
   }
 
-  if (matrixSize < 128) {
+  if (matrixSize < 128 && TEST_MODE) {
     for (int i = 0; i < matrixSize; i++) {
       for (int j = 0; j < matrixSize; j++) {
         if (opMatrix[i * matrixSize + j] != controlMatrix[i * matrixSize + j]) {
