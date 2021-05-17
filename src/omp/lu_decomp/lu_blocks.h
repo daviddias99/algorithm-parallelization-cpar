@@ -10,7 +10,7 @@
 void luBlocks(double *matrix, size_t size, size_t blockSize) {
   // Move along matrix diagonal
   double *diagonalBlock = matrix;
-
+  
   for (size_t currentDiagonalIdx = 0; currentDiagonalIdx < size;
        currentDiagonalIdx += blockSize) {
     // Do LU factorization of block A00

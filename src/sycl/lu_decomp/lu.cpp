@@ -6,7 +6,8 @@
 #include <iostream>
 #include <string>
 
-#include "lu_seq.h"
+#include "../../omp/lu_decomp/lu_blocks_common.h"
+#include "../../omp/lu_decomp/lu_seq.h"
 
 using namespace cl::sycl;
 using namespace std;
@@ -42,82 +43,26 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize,
       std::cout << " An exception has been thrown: " << e.what() << std::endl;
     }
   });
-  double *diagonalBlock, *factorizedColumns, *factorizedRows, *subMatrix, *a10;
-  size_t k, offsetK, offsetI, i, rowOffsetI, j, subMatrixSize,
-      currentDiagonalIdx, ii, jj, rowOffsetK;
 
-  for (currentDiagonalIdx = 0; currentDiagonalIdx < matSize;
+  double* diagonalBlock = MA;
+  for (size_t currentDiagonalIdx = 0; currentDiagonalIdx < matSize;
        currentDiagonalIdx += blockSize) {
-    // Get current diagonal block start address (A00)
-    diagonalBlock = MA + currentDiagonalIdx * matSize + currentDiagonalIdx;
-
     // Do LU factorization of block A00
-    { luSequential(diagonalBlock, blockSize, blockSize, matSize); }
+    luSequential(diagonalBlock, blockSize, blockSize, matSize);
 
     if (matSize - currentDiagonalIdx <= blockSize) break;
 
     // Do LU factorization of block A10
-    a10 = diagonalBlock + matSize * blockSize;
-
-    // TODO: make both loops parallel with each other
-    for (ii = 0; ii < matSize - currentDiagonalIdx - blockSize;
+    for (size_t ii = 0; ii < matSize - currentDiagonalIdx - blockSize;
          ii += blockSize) {
-      for (k = 0; k < blockSize && MA[k * matSize + k] != 0; k++) {
-        offsetK = k * matSize;
-        for (i = ii; i < ii + blockSize; i++) {
-          a10[i * matSize + k] /= diagonalBlock[offsetK + k];
-        }
-
-        for (i = ii; i < ii + blockSize; i++) {
-          offsetI = i * matSize;
-          for (j = k + 1; j < blockSize; j++) {
-            a10[offsetI + j] -= a10[offsetI + k] * diagonalBlock[offsetK + j];
-          }
-        }
-      }
+      factorizeA10(diagonalBlock, matSize, blockSize, ii);
     }
 
-    // Do LU factorization for block A01
-    for (jj = currentDiagonalIdx + blockSize; jj < matSize; jj += blockSize) {
-      for (k = currentDiagonalIdx;
-           MA[k * matSize + k] != 0 && k < currentDiagonalIdx + blockSize;
-           k++) {
-        offsetK = k * matSize;
-        for (i = k + 1; i < currentDiagonalIdx + blockSize; i++) {
-          rowOffsetI = i * matSize;
-          for (j = jj; j < jj + blockSize; j++) {
-            MA[rowOffsetI + j] -= MA[rowOffsetI + k] * MA[offsetK + j];
-          }
-        }
-      }
-    }
+    factorizeA01(diagonalBlock, matSize, blockSize, blockSize,
+                 matSize - currentDiagonalIdx);
 
-    // // Calculate addresses of blocks A10, A01 and A11
-    // factorizedColumns = diagonalBlock + blockSize * matSize;
-    // factorizedRows = diagonalBlock + blockSize;
-    // subMatrix = diagonalBlock + blockSize * matSize + blockSize;
+    size_t subMatrixSize = matSize - (blockSize + currentDiagonalIdx);
 
-    // subMatrixSize = matSize - (blockSize + currentDiagonalIdx);
-
-    // // Update A11
-    // for (ii = 0; ii < subMatrixSize; ii += blockSize)
-    //   for (jj = 0; jj < subMatrixSize; jj += blockSize) {
-    //     for (i = ii; i < ii + blockSize; i++) {
-    //       rowOffsetI = i * matSize;
-    //       for (k = 0; k < blockSize; k++) {
-    //         rowOffsetK = k * matSize;
-    //         for (j = jj; j < jj + blockSize; j++) {
-    //           subMatrix[rowOffsetI + j] -= factorizedColumns[rowOffsetI + k]
-    //           *
-    //                                        factorizedRows[rowOffsetK + j];
-    //         }
-    //       }
-    //     }
-    //   }
-
-    subMatrixSize = matSize - (blockSize + currentDiagonalIdx);
-
-    // std::cout << "SubMatSize " << subMatrixSize << std::endl;
     range<2> dimensions((matSize), (matSize));
     const property_list props = {};
     buffer<double, 2> matrix(MA, dimensions, props);
@@ -133,19 +78,16 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize,
             int i = item.get_global_id(0) + blockSize + currentDiagonalIdx;
             double tmp = 0.0;
 
-            // printf("Global item (%ld,%ld)!\n", item.get_global_id(0),
-            //        item.get_global_id(1));
-
             for (int k = currentDiagonalIdx; k < currentDiagonalIdx + blockSize;
                  k++) {
-              // printf("i,j,k (%ld,%ld,%ld)!\n", i, j, k);
-
               tmp += matrixAcc[i][k] * matrixAcc[k][j];
             }
             matrixAcc[i][j] -= tmp;
           });
     });
     Q.wait_and_throw();
+
+    diagonalBlock += blockSize * matSize + blockSize;
   }
 
   return false;
@@ -171,7 +113,7 @@ bool runExperiment(double* MA, size_t matSize, size_t blockSize,
 
   std::cout << "Time: " << time << std::endl;
   float flops =
-      (2.0f/3 * matSize * matSize * matSize / (time / 1000.0f)) * 1.0e-9f;
+      (2.0f / 3 * matSize * matSize * matSize / (time / 1000.0f)) * 1.0e-9f;
   std::cout << "TODO: calcular isto direito: GFLOPs: " << flops << std::endl;
 
   return error;
