@@ -55,8 +55,8 @@ int main(int argc, char *argv[]) {
 
   // Get arguments
   int matrixSize = atoi(argv[1]);
-  int runs = atoi(argv[2]);
-  int op = atoi(argv[3]);
+  int op = atoi(argv[2]);
+  int runs = atoi(argv[3]);
   int blockSize = argc == 5 ? atoi(argv[4]) : matrixSize;
 
   const int MATRIX_SIZE_BYTES = (matrixSize * matrixSize) * sizeof(double);
@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
     auto begin = std::chrono::steady_clock::now();
     switch (op) {
       case 1:
-        luSequential(controlMatrix, matrixSize, matrixSize, matrixSize);
+        luSequential(opMatrix, matrixSize, matrixSize, matrixSize);
         break;
       case 2:
         luBlocks(opMatrix, matrixSize, blockSize);
@@ -102,13 +102,9 @@ int main(int argc, char *argv[]) {
         break;
     }
 
-    // cout << "-------- RES --------" << endl;
-    // printMatrix(controlMatrix, matrixSize);
-    auto end = chrono::steady_clock::now();
-    auto elapsed = chrono::duration_cast<chrono::milliseconds>(end - begin);
-
-    cout << op << " " << matrixSize << " " << blockSize << " "
-         << elapsed.count() << endl;
+    auto end = std::chrono::steady_clock::now();
+    auto elapsed = chrono::duration_cast<chrono::microseconds>(end - begin);
+    cout << op << " " << matrixSize << " " << blockSize << " " << elapsed.count()/ 1000000.0 << endl;
   }
 
   if (matrixSize < 128 && TEST_MODE) {

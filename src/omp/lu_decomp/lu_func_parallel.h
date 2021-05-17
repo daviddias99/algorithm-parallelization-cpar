@@ -73,23 +73,24 @@ void luFuncParallel(double* matrix, size_t size, size_t blockSize) {
 
       if (size - currentDiagonalIdx <= blockSize) break;
 
-      // Do LU factorization of block A10
-      a10 = diagonalBlock + size * blockSize;
+      // Using taskgroup instead of taskloop in order to parallelize A10 and A01
+      #pragma omp taskgroup 
+      {
+          // Do LU factorization of block A10
+          a10 = diagonalBlock + size * blockSize;
+          for (size_t ii = 0; ii < size - currentDiagonalIdx - blockSize;
+              ii += blockSize) {
+            #pragma omp task firstprivate(ii) shared(matrix, diagonalBlock, a10, blockSize, size)
+            factorA10(matrix, diagonalBlock, a10, blockSize, size, ii);
+          }
 
-      // TODO: make both loops parallel with each other
-#pragma omp taskloop
-      for (size_t ii = 0; ii < size - currentDiagonalIdx - blockSize;
-           ii += blockSize) {
-        factorA10(matrix, diagonalBlock, a10, blockSize, size, ii);
+          // Do LU factorization for block A01
+          for (size_t jj = currentDiagonalIdx + blockSize; jj < size;
+              jj += blockSize) {
+            #pragma omp task firstprivate(jj) shared(matrix, blockSize, size, currentDiagonalIdx)
+            factorA01(matrix, jj, blockSize, size, currentDiagonalIdx);
+          }
       }
-
-      // Do LU factorization for block A01
-#pragma omp taskloop
-      for (size_t jj = currentDiagonalIdx + blockSize; jj < size;
-           jj += blockSize) {
-        factorA01(matrix, jj, blockSize, size, currentDiagonalIdx);
-      }
-
       // Calculate addresses of blocks A10, A01 and A11
       factorizedColumns = diagonalBlock + blockSize * size;
       factorizedRows = diagonalBlock + blockSize;
