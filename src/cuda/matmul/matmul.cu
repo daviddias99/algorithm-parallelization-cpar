@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
   int matrixSize = atoi(argv[1]);
   int op = atoi(argv[2]);
   int runs = atoi(argv[3]);
-  int blockSize = atoi(argv[4]) : 1;
+  int blockSize = atoi(argv[4]);
 
   // allocate and initialize host (CPU) memory
   double *M = (double *)malloc(matrixSize * matrixSize * sizeof(double));
