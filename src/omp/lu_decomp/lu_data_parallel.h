@@ -31,7 +31,6 @@ void luDataParallel(double *matrix, size_t size, size_t blockSize) {
     // Do LU factorization of block A10
     a10 = diagonalBlock + size * blockSize;
 
-// TODO: make both loops parallel with each other
 #pragma omp for nowait
     for (ii = 0; ii < size - currentDiagonalIdx - blockSize; ii += blockSize) {
       for (k = 0; k < blockSize && matrix[k * size + k] != 0; k++) {
@@ -51,7 +50,7 @@ void luDataParallel(double *matrix, size_t size, size_t blockSize) {
 
 // TODO ver se é preciso um schedule dynamic
 // Do LU factorization for block A01
-#pragma omp for
+#pragma omp for schedule(dynamic)
     for (jj = currentDiagonalIdx + blockSize; jj < size; jj += blockSize) {
       for (k = currentDiagonalIdx;
            matrix[k * size + k] != 0 && k < currentDiagonalIdx + blockSize;

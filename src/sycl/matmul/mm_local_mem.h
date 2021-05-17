@@ -10,9 +10,6 @@ class matmul_kernel_local_mem;
 template <typename T>
 bool matmulBlocksLocalMem(T* MA, T* MB, T* MC, size_t matSize, size_t blockSize,
                   const device_selector& selector) {
-  if (!isPowerOfTwo(matSize)) {
-    return true;
-  }
 
   queue Q(selector, [&](exception_list eL) {
     try {

@@ -9,9 +9,6 @@ using namespace cl::sycl;
 template <typename T>
 bool matmulBlocks(T* MA, T* MB, T* MC, size_t matSize, size_t blockSize,
                   const device_selector& selector) {
-  if (!isPowerOfTwo(matSize)) {
-    return true;
-  }
 
   queue Q(selector, [&](exception_list eL) {
     try {

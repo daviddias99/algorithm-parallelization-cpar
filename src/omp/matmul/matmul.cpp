@@ -82,8 +82,8 @@ int main(int argc, char *argv[]) {
 
   // Get arguments
   int matrixSize = atoi(argv[1]);
-  int runs = atoi(argv[2]);
-  int op = atoi(argv[3]);
+  int op = atoi(argv[2]);
+  int runs = atoi(argv[3]);
   int blockSize = argc == 5 ? atoi(argv[4]) : matrixSize*matrixSize;
 
   const int MATRIX_SIZE_BYTES = (matrixSize * matrixSize) * sizeof(double);
