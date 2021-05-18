@@ -16,7 +16,7 @@ using namespace cl::sycl;
 using namespace std;
 
 class lu_kernel;
-
+class lu_kernel_2;
 
 bool luFactorization(double* MA, size_t matSize, size_t blockSize,
                      const device_selector& selector) {
@@ -38,14 +38,10 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize,
 
     if (matSize - currentDiagonalIdx <= blockSize) break;
 
-    // Do LU factorization of block A10
-    for (size_t ii = 0; ii < matSize - currentDiagonalIdx - blockSize;
-         ii += blockSize) {
-      factorizeA10(diagonalBlock, matSize, blockSize, ii);
-    }
-
     factorizeA01(diagonalBlock, matSize, blockSize, blockSize,
                  matSize - currentDiagonalIdx);
+
+    // Do LU factorization of block A10
 
     size_t subMatrixSize = matSize - (blockSize + currentDiagonalIdx);
 
@@ -53,15 +49,57 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize,
     const property_list props = {};
     buffer<double, 2> matrix(MA, dimensions, props);
 
+    // for (size_t ii = 0; ii < matSize - currentDiagonalIdx - blockSize;
+    //      ii += blockSize) {
+    //   factorizeA10(diagonalBlock, matSize, blockSize, ii);
+    // }
+
+    size_t nBlocks = (matSize - currentDiagonalIdx - blockSize) / blockSize;
+
+    // double* a10 = diagonalBlock + size * blockSize;
+
+    // for (size_t k = 0; k < blockSize; k++) {
+    //   size_t offsetK = k * size;
+    //   for (size_t i = ii; i < ii + blockSize; i++) {
+    //     a10[i * size + k] /= diagonalBlock[offsetK + k];
+    //   }
+
+    //   for (size_t i = ii; i < ii + blockSize; i++) {
+    //     size_t offsetI = i * size;
+    //     for (size_t j = k + 1; j < blockSize; j++) {
+    //       a10[offsetI + j] -= a10[offsetI + k] * diagonalBlock[offsetK + j];
+    //     }
+    //   }
+    // }
+
+    Q.submit([&](handler& h) {
+      auto matrixAcc = matrix.template get_access<access::mode::read_write>(h);
+
+      h.parallel_for<lu_kernel_2>(range<1>{range<1>(nBlocks)}, [=](id<1> id) {
+        int ii = id.get(0) * blockSize + blockSize + currentDiagonalIdx;
+
+        for (size_t k = currentDiagonalIdx; k < currentDiagonalIdx + blockSize;
+             k++) {
+          for (size_t i = ii; i < ii + blockSize; i++) {
+            matrixAcc[i][k] /= matrixAcc[k][k];
+          }
+          for (size_t i = ii; i < ii + blockSize; i++) {
+            for (size_t j = k + 1; j < currentDiagonalIdx + blockSize; j++) {
+              matrixAcc[i][j] -= matrixAcc[i][k] * matrixAcc[k][j];
+            }
+          }
+        }
+      });
+    });
+    Q.wait_and_throw();
+
     Q.submit([&](handler& h) {
       auto matrixAcc = matrix.template get_access<access::mode::read_write>(h);
 
       h.parallel_for<lu_kernel>(
-          nd_range<2>{range<2>(subMatrixSize, subMatrixSize),
-                      range<2>(blockSize, blockSize)},
-          [=](nd_item<2> item) {
-            int j = item.get_global_id(1) + blockSize + currentDiagonalIdx;
-            int i = item.get_global_id(0) + blockSize + currentDiagonalIdx;
+          range<2>{range<2>(subMatrixSize, subMatrixSize)}, [=](id<2> id) {
+            int j = id.get(1) + blockSize + currentDiagonalIdx;
+            int i = id.get(0) + blockSize + currentDiagonalIdx;
             double tmp = 0.0;
 
             for (int k = currentDiagonalIdx; k < currentDiagonalIdx + blockSize;
@@ -80,11 +118,11 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize,
 }
 
 bool runExperiments(double* MA, size_t matSize, size_t blockSize, int op,
-                    const device_selector& selector, int numExperiments, double* controlMatrix) {
+                    const device_selector& selector, int numExperiments,
+                    double* controlMatrix) {
   bool error;
 
-  for (size_t i = 0; i < numExperiments; i++)
-  {
+  for (size_t i = 0; i < numExperiments; i++) {
     auto start = std::chrono::steady_clock::now();
     switch (op) {
       case 1:
@@ -94,23 +132,23 @@ bool runExperiments(double* MA, size_t matSize, size_t blockSize, int op,
         error = true;
         break;
     }
-  
+
     auto end = std::chrono::steady_clock::now();
-    auto time = std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-                    .count();
-    if(TEST_MODE) {
-       float flops =
-        (2.0f / 3 * matSize * matSize * matSize / (time / 1000.0f)) * 1.0e-9f;
+    auto time =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+            .count();
+    if (TEST_MODE) {
+      float flops =
+          (2.0f / 3 * matSize * matSize * matSize / (time / 1000.0f)) * 1.0e-9f;
       std::cout << "Time: " << time << std::endl;
       std::cout << "GFLOPs: " << flops << std::endl;
       if (matSize < 128 && !error) {
         error = compareResults(controlMatrix, MA, matSize);
       }
+    } else {
+      std::cout << op << " " << matSize << " " << blockSize << " "
+                << time / 1000000.0 << " N/A" << std::endl;
     }
-    else {
-      std::cout << op << " " << matSize << " " << blockSize << " " << time/ 1000000.0 << " N/A" << std::endl;
-    }
-
   }
   return error;
 }
@@ -145,7 +183,7 @@ int main(int argc, char* argv[]) {
   try {
     op = std::stoi(argv[3]);
 
-    if (op <= 0 || op >= 4){
+    if (op <= 0 || op >= 4) {
       usage(argv[0]);
       return 1;
     }
@@ -164,8 +202,8 @@ int main(int argc, char* argv[]) {
     usage(argv[0]);
     return 1;
   }
-  
-  if(argc == 6) {
+
+  if (argc == 6) {
     try {
       nruns = std::stoi(argv[5]);
     } catch (...) {
@@ -191,10 +229,12 @@ int main(int argc, char* argv[]) {
     luSequential(controlMatrix, matSize, matSize, matSize);
   }
 
-  if(gpu)
-    error = runExperiments(originalMatrix, matSize, blockSize, op, gpu_selector{}, nruns, controlMatrix);
+  if (gpu)
+    error = runExperiments(originalMatrix, matSize, blockSize, op,
+                           gpu_selector{}, nruns, controlMatrix);
   else
-    error = runExperiments(originalMatrix, matSize, blockSize, op, cpu_selector{}, nruns, controlMatrix);
+    error = runExperiments(originalMatrix, matSize, blockSize, op,
+                           cpu_selector{}, nruns, controlMatrix);
 
   std::cout << (error ? "Error in computation." : "Success") << std::endl;
 

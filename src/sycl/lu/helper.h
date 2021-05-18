@@ -45,7 +45,7 @@ void usage(std::string programName) {
   std::cout << programName << " [matrix size] [gpu|cpu] [op]" << std::endl;
   std::cout << "[matrix size] : Size of the matrix to multiply"  << std::endl;
   std::cout << "[block size]  : Size of blocks to use" << std::endl;
-  std::cout << "[op]          : Algorithm to use (1. naive, 2. block, 3. block + local mem.)" << std::endl;
+  std::cout << "[op]          : Algorithm to use" << std::endl;
   std::cout << "[gpu|cpu]     : Use GPU or CPU device." << std::endl;
   std::cout << "[runs]        : Number of runs to execute" << std::endl;
 }
