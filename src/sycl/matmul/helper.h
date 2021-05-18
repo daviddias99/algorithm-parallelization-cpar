@@ -4,7 +4,7 @@
 #include <CL/sycl.hpp>
 #include <iostream>
 
-#define TEST_MODE true
+#define TEST_MODE false
 
 using namespace cl::sycl;
 

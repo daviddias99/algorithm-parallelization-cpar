@@ -1,0 +1,7 @@
+Exp,Op,Matrix Size,Block Size,Time,P
+lu_sycl_gpu,1,1024,8,0.278985,N/A
+lu_sycl_gpu,1,1024,8,0.140939,N/A
+lu_sycl_gpu,1,1024,8,0.134834,N/A
+lu_sycl_gpu,1,2048,8,0.294298,N/A
+lu_sycl_gpu,1,2048,8,0.277856,N/A
+lu_sycl_gpu,1,2048,8,0.274597,N/A

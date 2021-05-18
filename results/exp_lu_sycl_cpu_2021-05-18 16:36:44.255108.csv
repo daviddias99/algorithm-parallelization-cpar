@@ -1,0 +1,7 @@
+Exp,Op,Matrix Size,Block Size,Time,P
+matmul_sycl_cpu,2,1024,8,0.447917,N/A
+matmul_sycl_cpu,2,1024,8,0.379643,N/A
+matmul_sycl_cpu,2,1024,8,0.299209,N/A
+matmul_sycl_cpu,2,2048,8,3.04882,N/A
+matmul_sycl_cpu,2,2048,8,2.83189,N/A
+matmul_sycl_cpu,2,2048,8,3.00342,N/A

@@ -1,0 +1,9 @@
+Exp,Op,Matrix Size,Block Size,Time,P
+matmul_cuda,1,1024,8,0.020004,N/A
+matmul_cuda,1,1024,8,0.02025,N/A
+matmul_cuda,1,1024,8,0.018735,N/A
+matmul_cuda,0,,,,
+matmul_cuda,1,2048,8,0.124917,N/A
+matmul_cuda,1,2048,8,0.132388,N/A
+matmul_cuda,1,2048,8,0.116911,N/A
+matmul_cuda,0,,,,

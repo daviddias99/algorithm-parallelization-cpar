@@ -1,0 +1,7 @@
+Exp,Op,Matrix Size,Block Size,Time,P
+lu_sycl_cpu,1,1024,8,0.912143,N/A
+lu_sycl_cpu,1,1024,8,0.268289,N/A
+lu_sycl_cpu,1,1024,8,0.277232,N/A
+lu_sycl_cpu,1,2048,8,1.34,N/A
+lu_sycl_cpu,1,2048,8,1.03254,N/A
+lu_sycl_cpu,1,2048,8,1.07472,N/A

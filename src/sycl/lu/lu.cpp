@@ -10,7 +10,7 @@
 #include "../../omp/lu/lu_seq.h"
 #include "helper.h"
 
-#define TEST_MODE true
+#define TEST_MODE false
 
 using namespace cl::sycl;
 using namespace std;
@@ -266,7 +266,9 @@ int main(int argc, char* argv[]) {
     error = runExperiments(originalMatrix, matSize, blockSize, op,
                            cpu_selector{}, nruns, controlMatrix);
 
-  std::cout << (error ? "Error in computation." : "Success") << std::endl;
+
+  if(TEST_MODE)
+    std::cout << (error ? "Error in computation." : "Success") << std::endl;
 
   delete[] originalMatrix;
   delete[] controlMatrix;

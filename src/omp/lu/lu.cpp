@@ -12,7 +12,7 @@
 #include "lu_seq.h"
 using namespace std;
 
-#define TEST_MODE true
+#define TEST_MODE false
 
 int getRandBetween(int min, int max) { return rand() % (max - min + 1) + min; }
 

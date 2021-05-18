@@ -1,0 +1,7 @@
+Exp,Op,Matrix Size,Block Size,Time,P
+matmul_sycl_gpu,3,1024,8,0.197338,N/A
+matmul_sycl_gpu,3,1024,8,0.142375,N/A
+matmul_sycl_gpu,3,1024,8,0.158788,N/A
+matmul_sycl_gpu,3,2048,8,0.564669,N/A
+matmul_sycl_gpu,3,2048,8,0.602149,N/A
+matmul_sycl_gpu,3,2048,8,0.571666,N/A

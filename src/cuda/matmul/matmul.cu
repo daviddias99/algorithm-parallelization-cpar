@@ -4,7 +4,7 @@
 
 using namespace std;
 
-#define TEST_MODE true
+#define TEST_MODE false
 
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
 {

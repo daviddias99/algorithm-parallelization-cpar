@@ -1,0 +1,7 @@
+Exp,Op,Matrix Size,Block Size,Time,P
+matmul_omp_3,3,1024,128,0.279988,3
+matmul_omp_3,3,1024,128,0.270249,3
+matmul_omp_3,3,1024,128,0.271187,3
+matmul_omp_3,3,2048,128,2.16181,3
+matmul_omp_3,3,2048,128,2.11751,3
+matmul_omp_3,3,2048,128,2.12111,3
