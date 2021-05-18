@@ -17,6 +17,8 @@ using namespace std;
 
 class lu_kernel;
 class lu_kernel_2;
+class lu_kernel_3;
+class lu_kernel_0;
 
 bool luFactorization(double* MA, size_t matSize, size_t blockSize,
                      const device_selector& selector) {
@@ -31,46 +33,59 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize,
   });
 
   double* diagonalBlock = MA;
+
   for (size_t currentDiagonalIdx = 0; currentDiagonalIdx < matSize;
        currentDiagonalIdx += blockSize) {
-    // Do LU factorization of block A00
     luSequential(diagonalBlock, blockSize, blockSize, matSize);
 
     if (matSize - currentDiagonalIdx <= blockSize) break;
-
-    factorizeA01(diagonalBlock, matSize, blockSize, blockSize,
-                 matSize - currentDiagonalIdx);
-
-    // Do LU factorization of block A10
-
-    size_t subMatrixSize = matSize - (blockSize + currentDiagonalIdx);
 
     range<2> dimensions((matSize), (matSize));
     const property_list props = {};
     buffer<double, 2> matrix(MA, dimensions, props);
 
-    // for (size_t ii = 0; ii < matSize - currentDiagonalIdx - blockSize;
-    //      ii += blockSize) {
-    //   factorizeA10(diagonalBlock, matSize, blockSize, ii);
-    // }
+    // Q.submit([&](handler& h) {
+    //   auto matrixAcc = matrix.template
+    //   get_access<access::mode::read_write>(h);
+
+    //   h.single_task<lu_kernel_0>([=]() {
+    //     for (size_t k = currentDiagonalIdx;
+    //          k < currentDiagonalIdx + blockSize && matrixAcc[k][k] != 0; k++)
+    //          {
+    //       for (size_t i = k + 1; i < blockSize; i++) {
+    //         matrixAcc[i][k] /= matrixAcc[k][k];
+    //       }
+
+    //       for (size_t i = k + 1; i < blockSize; i++) {
+    //         for (size_t j = k + 1; j < blockSize; j++) {
+    //           matrixAcc[i][j] -= matrixAcc[i][k] * matrixAcc[k][j];
+    //         }
+    //       }
+    //     }
+    //   });
+    // });
+    // Q.wait_and_throw();
+
+    if (matSize - currentDiagonalIdx <= blockSize) break;
 
     size_t nBlocks = (matSize - currentDiagonalIdx - blockSize) / blockSize;
 
-    // double* a10 = diagonalBlock + size * blockSize;
+    Q.submit([&](handler& h) {
+      auto matrixAcc = matrix.template get_access<access::mode::read_write>(h);
 
-    // for (size_t k = 0; k < blockSize; k++) {
-    //   size_t offsetK = k * size;
-    //   for (size_t i = ii; i < ii + blockSize; i++) {
-    //     a10[i * size + k] /= diagonalBlock[offsetK + k];
-    //   }
+      h.parallel_for<lu_kernel_3>(range<1>{range<1>(nBlocks)}, [=](id<1> id) {
+        int jj = id.get(0) * blockSize + blockSize + currentDiagonalIdx;
 
-    //   for (size_t i = ii; i < ii + blockSize; i++) {
-    //     size_t offsetI = i * size;
-    //     for (size_t j = k + 1; j < blockSize; j++) {
-    //       a10[offsetI + j] -= a10[offsetI + k] * diagonalBlock[offsetK + j];
-    //     }
-    //   }
-    // }
+        for (size_t k = currentDiagonalIdx; k < currentDiagonalIdx + blockSize;
+             k++) {
+          for (size_t i = k + 1; i < currentDiagonalIdx + blockSize; i++) {
+            for (size_t j = jj; j < jj + blockSize; j++) {
+              matrixAcc[i][j] -= matrixAcc[i][k] * matrixAcc[k][j];
+            }
+          }
+        }
+      });
+    });
 
     Q.submit([&](handler& h) {
       auto matrixAcc = matrix.template get_access<access::mode::read_write>(h);
@@ -92,6 +107,8 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize,
       });
     });
     Q.wait_and_throw();
+
+    size_t subMatrixSize = matSize - (blockSize + currentDiagonalIdx);
 
     Q.submit([&](handler& h) {
       auto matrixAcc = matrix.template get_access<access::mode::read_write>(h);
@@ -139,7 +156,8 @@ bool runExperiments(double* MA, size_t matSize, size_t blockSize, int op,
             .count();
     if (TEST_MODE) {
       float flops =
-          (2.0f / 3 * matSize * matSize * matSize / (time / 1000.0f)) * 1.0e-9f;
+          (2.0f / 3 * matSize * matSize * matSize / (time / 1000000.0f)) *
+          1.0e-9f;
       std::cout << "Time: " << time << std::endl;
       std::cout << "GFLOPs: " << flops << std::endl;
       if (matSize < 128 && !error) {
