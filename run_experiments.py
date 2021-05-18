@@ -58,10 +58,10 @@ def run_experiment(exp):
   return pd.DataFrame(results, columns=['Exp', 'Op', 'Matrix Size', 'Block Size', 'Time', 'P'])
 
 
-compile_cuda('matmul', 'matmul.cu')
-compile_omp('lu', 'lu.cpp', 'lu_seq.h', 4)
-compile_omp('matmul', 'matmul.cpp', 'matmul.cpp',4)
+# compile_cuda('matmul', 'matmul.cu')
+# compile_omp('lu', 'lu.cpp', 'lu_seq.h', 4)
+# compile_omp('matmul', 'matmul.cpp', 'matmul.cpp',4)
 compile_sycl_gpu('lu', 'lu.cpp')
-compile_sycl_gpu('matmul', 'matmul.cpp')
-compile_sycl_cpu('lu', 'lu')
-compile_sycl_cpu('matmul', 'matmul')
+# compile_sycl_gpu('matmul', 'matmul.cpp')
+# compile_sycl_cpu('lu', 'lu')
+# compile_sycl_cpu('matmul', 'matmul')

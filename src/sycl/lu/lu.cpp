@@ -8,29 +8,15 @@
 
 #include "../../omp/lu/lu_blocks_common.h"
 #include "../../omp/lu/lu_seq.h"
+#include "helper.h"
+
+#define TEST_MODE true
 
 using namespace cl::sycl;
 using namespace std;
 
 class lu_kernel;
 
-int getRandBetween(int min, int max) { return rand() % (max - min + 1) + min; }
-
-void outputDevInfo(const sycl::device& dev) {
-  std::cout << "  -> Selected device: "
-            << dev.get_info<sycl::info::device::name>() << std::endl;
-  std::cout << "  -> Device vendor: "
-            << dev.get_info<sycl::info::device::vendor>() << std::endl;
-}
-
-void printMatrix(double* matrix, size_t size) {
-  for (size_t i = 0; i < size; i++) {
-    for (size_t j = 0; j < size; j++) {
-      std::cout << std::setw(12) << matrix[i * size + j];
-    }
-    std::cout << std::endl;
-  }
-}
 
 bool luFactorization(double* MA, size_t matSize, size_t blockSize,
                      const device_selector& selector) {
@@ -93,58 +79,55 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize,
   return false;
 }
 
-void usage(std::string programName) {
-  std::cout << " Incorrect number of parameters " << std::endl;
-  std::cout << " Usage: " << std::endl;
-  std::cout << programName << " [matrix size] [gpu|cpu]" << std::endl;
-  std::cout << "[matrix size] : Size of the matrix to multiply (minimum 32)"
-            << std::endl;
-  std::cout << "[gpu|cpu]    : Use GPU or CPU device."
-            << " Default is to use both " << std::endl;
-}
+bool runExperiments(double* MA, size_t matSize, size_t blockSize, int op,
+                    const device_selector& selector, int numExperiments, double* controlMatrix) {
+  bool error;
 
-bool runExperiment(double* MA, size_t matSize, size_t blockSize,
-                   const device_selector& selector) {
-  auto start = std::chrono::steady_clock::now();
-  bool error = luFactorization(MA, matSize, blockSize, selector);
-  auto end = std::chrono::steady_clock::now();
-  auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
-                  .count();
-
-  std::cout << "Time: " << time << std::endl;
-  float flops =
-      (2.0f / 3 * matSize * matSize * matSize / (time / 1000.0f)) * 1.0e-9f;
-  std::cout << "TODO: calcular isto direito: GFLOPs: " << flops << std::endl;
-
-  return error;
-}
-
-bool compareResults(double* control, double* result, size_t matrixSize) {
-  for (int i = 0; i < matrixSize; i++) {
-    for (int j = 0; j < matrixSize; j++) {
-      if (control[i * matrixSize + j] - result[i * matrixSize + j] > 1e-8) {
-        std::cout << "ALGORITHM NOT CORRECT " << result[i * matrixSize + j]
-                  << " != " << control[i * matrixSize + j] << std::endl;
-
-        return true;
+  for (size_t i = 0; i < numExperiments; i++)
+  {
+    auto start = std::chrono::steady_clock::now();
+    switch (op) {
+      case 1:
+        error = luFactorization(MA, matSize, blockSize, selector);
+        break;
+      default:
+        error = true;
+        break;
+    }
+  
+    auto end = std::chrono::steady_clock::now();
+    auto time = std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+                    .count();
+    if(TEST_MODE) {
+       float flops =
+        (2.0f / 3 * matSize * matSize * matSize / (time / 1000.0f)) * 1.0e-9f;
+      std::cout << "Time: " << time << std::endl;
+      std::cout << "GFLOPs: " << flops << std::endl;
+      if (matSize < 128 && !error) {
+        error = compareResults(controlMatrix, MA, matSize);
       }
     }
-  }
+    else {
+      std::cout << op << " " << matSize << " " << blockSize << " " << time/ 1000000.0 << " N/A" << std::endl;
+    }
 
-  return false;
+  }
+  return error;
 }
 
 int main(int argc, char* argv[]) {
   bool gpu = true;
   bool cpu = true;
   bool error = false;
-
-  if (argc != 3 && argc != 4) {
+  size_t matSize = 0;
+  size_t blockSize = 0;
+  int op = 0;
+  int nruns = 1;
+  if (argc != 5 && argc != 6) {
     usage(argv[0]);
     return 1;
   }
 
-  size_t matSize = 0;
   try {
     matSize = std::stoi(argv[1]);
   } catch (...) {
@@ -152,14 +135,6 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  srand(time(NULL));
-
-  if (matSize < 3) {
-    usage(argv[0]);
-    return 1;
-  }
-
-  size_t blockSize = 0;
   try {
     blockSize = std::stoi(argv[2]);
   } catch (...) {
@@ -167,14 +142,33 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  if (argc == 4) {
-    if (std::string(argv[3]) == "gpu") {
-      gpu = true;
-      cpu = false;
-    } else if (std::string(argv[3]) == "cpu") {
-      gpu = false;
-      cpu = true;
-    } else {
+  try {
+    op = std::stoi(argv[3]);
+
+    if (op <= 0 || op >= 4){
+      usage(argv[0]);
+      return 1;
+    }
+  } catch (...) {
+    usage(argv[0]);
+    return 1;
+  }
+
+  if (std::string(argv[4]) == "gpu") {
+    gpu = true;
+    cpu = false;
+  } else if (std::string(argv[4]) == "cpu") {
+    gpu = false;
+    cpu = true;
+  } else {
+    usage(argv[0]);
+    return 1;
+  }
+  
+  if(argc == 6) {
+    try {
+      nruns = std::stoi(argv[5]);
+    } catch (...) {
       usage(argv[0]);
       return 1;
     }
@@ -192,44 +186,20 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  if (matSize < 128) {
+  if (TEST_MODE) {
     memcpy(controlMatrix, originalMatrix, matSize * matSize * sizeof(double));
     luSequential(controlMatrix, matSize, matSize, matSize);
   }
-  std::cout << "***** Original" << std::endl;
-  // printMatrix(originalMatrix, matSize);
-  std::cout << "***** Control" << std::endl;
-  // printMatrix(controlMatrix, matSize);
 
-  if (gpu) {
-    std::cout << "***** GPU" << std::endl;
-    memcpy(MA, originalMatrix, matSize * matSize * sizeof(double));
+  if(gpu)
+    error = runExperiments(originalMatrix, matSize, blockSize, op, gpu_selector{}, nruns, controlMatrix);
+  else
+    error = runExperiments(originalMatrix, matSize, blockSize, op, cpu_selector{}, nruns, controlMatrix);
 
-    error = runExperiment(MA, matSize, blockSize, gpu_selector{});
-    // printMatrix(MA, matSize);
-    if (matSize < 128 && !error) {
-      std::cout << "** Result" << std::endl;
-      // printMatrix(MA, matSize);
+  std::cout << (error ? "Error in computation." : "Success") << std::endl;
 
-      error = compareResults(controlMatrix, MA, matSize);
-    }
-
-    std::cout << (error ? "Error in computation." : "Success") << std::endl;
-  }
-  if (cpu) {
-    std::cout << "***** CPU" << std::endl;
-    memcpy(MA, originalMatrix, matSize * matSize * sizeof(double));
-
-    error = runExperiment(MA, matSize, blockSize, cpu_selector{});
-    if (matSize < 128 && !error) {
-      std::cout << "** Result" << std::endl;
-      // printMatrix(MA, matSize);
-      error = compareResults(controlMatrix, MA, matSize);
-    }
-
-    std::cout << (error ? "Error in computation." : "Success") << std::endl;
-  }
-
+  delete[] originalMatrix;
+  delete[] controlMatrix;
   delete[] MA;
 
   return error ? 1 : 0;
