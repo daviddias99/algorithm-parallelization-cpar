@@ -6,8 +6,8 @@
 #include <iostream>
 #include <string>
 
-#include "../../omp/lu_decomp/lu_blocks_common.h"
-#include "../../omp/lu_decomp/lu_seq.h"
+#include "../../omp/lu/lu_blocks_common.h"
+#include "../../omp/lu/lu_seq.h"
 
 using namespace cl::sycl;
 using namespace std;

@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
 
     auto end = std::chrono::steady_clock::now();
     auto elapsed = chrono::duration_cast<chrono::microseconds>(end - begin);
-    cout << op << " " << matrixSize << " " << blockSize << " " << elapsed.count()/ 1000000.0 << endl;
+    cout << op << " " << matrixSize << " " << blockSize << " " << elapsed.count()/ 1000000.0 << " " << NUM_THREADS << endl;
   }
 
   if (matrixSize < 128 && TEST_MODE) {

@@ -7,6 +7,7 @@
 #include <chrono>
 
 using namespace std;
+#define NUM_THREADS 4
 
 void matMulSequential(double* op1Matrix, double* op2Matrix, double* resMatrix,
                   int matrixSize, int blockSize) {
@@ -30,7 +31,7 @@ void matMulSequential(double* op1Matrix, double* op2Matrix, double* resMatrix,
 void matMulParallelCollapse(double* op1Matrix, double* op2Matrix, double* resMatrix,
                   int matrixSize, int blockSize) {
   int ii, jj, kk, i, j, k, rowOffsetI, rowOffsetK;
-  #pragma omp parallel shared(op1Matrix, op2Matrix, resMatrix) private(ii, jj, kk, i, j, k)
+  #pragma omp parallel shared(op1Matrix, op2Matrix, resMatrix) private(ii, jj, kk, i, j, k) num_threads(NUM_THREADS)
   { 
     #pragma omp for collapse(2)
     for (ii = 0; ii < matrixSize; ii += blockSize)
@@ -53,7 +54,7 @@ void matMulParallelCollapse(double* op1Matrix, double* op2Matrix, double* resMat
 void matMulParallel(double* op1Matrix, double* op2Matrix, double* resMatrix,
                   int matrixSize, int blockSize) {
   int ii, jj, kk, i, j, k, rowOffsetI, rowOffsetK;
-  #pragma omp parallel shared(op1Matrix, op2Matrix, resMatrix) private(ii, jj, kk, i, j, k)
+  #pragma omp parallel shared(op1Matrix, op2Matrix, resMatrix) private(ii, jj, kk, i, j, k) num_threads(NUM_THREADS)
   { 
     #pragma omp for
     for (ii = 0; ii < matrixSize; ii += blockSize)
@@ -120,7 +121,7 @@ int main(int argc, char *argv[]) {
     auto end = chrono::high_resolution_clock::now();
     auto elapsed = chrono::duration_cast<chrono::microseconds>(end - begin);
     memset(resMatrix, 0, MATRIX_SIZE_BYTES);
-    cout << op << " " << matrixSize << " " << blockSize << " " << elapsed.count()/ 1000000.0 << endl;
+    cout << op << " " << matrixSize << " " << blockSize << " " << elapsed.count()/ 1000000.0 << " " << NUM_THREADS << endl;
   }
 
   free(op1Matrix);

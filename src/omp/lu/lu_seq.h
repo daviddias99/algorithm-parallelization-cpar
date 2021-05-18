@@ -1,5 +1,7 @@
 #ifndef LU_SEQ
 #define LU_SEQ
+#define NUM_THREADS 4
+
 #include <iostream>
 
 void luSequential(double *matrix, size_t nRows, size_t nCols,

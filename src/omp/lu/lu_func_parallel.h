@@ -8,7 +8,7 @@
 | A10 A11 |
 */
 void luFuncParallel(double *matrix, size_t size, size_t blockSize) {
-#pragma omp parallel num_threads(8)
+#pragma omp parallel num_threads(NUM_THREADS)
 #pragma omp single
   {
     double *diagonalBlock = matrix;

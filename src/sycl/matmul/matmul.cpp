@@ -49,7 +49,7 @@ bool runExperiments(T* MA, T* MB, T* MC, size_t matSize, size_t blockSize, int o
         }
     }
     else {
-      std::cout << op << " " << matSize << " " << blockSize << " " << time/ 1000000.0 << std::endl;
+      std::cout << op << " " << matSize << " " << blockSize << " " << time/ 1000000.0 << " N/A" << std::endl;
     }
   }
   

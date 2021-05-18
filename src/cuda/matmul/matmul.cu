@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
 
     auto end = std::chrono::steady_clock::now();
     auto elapsed = chrono::duration_cast<std::chrono::microseconds>(end - begin);
-    cout << 1 << " " << matrixSize << " " << blockSize << " " << elapsed.count()/ 1000000.0 << endl;
+    cout << 1 << " " << matrixSize << " " << blockSize << " " << elapsed.count()/ 1000000.0  << " N/A" << endl;
     
     if(TEST_MODE){
       float flops =(2.0f * matrixSize * matrixSize * matrixSize / (elapsed.count() / 1000000.0f)) * 1.0e-9f;
