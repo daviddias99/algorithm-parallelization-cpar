@@ -3,7 +3,7 @@ LDFLAGS += `pkg-config --libs computecpp`
 SYCLFLAGS += `pkg-config computecpp --variable device_cflags`
 SYCLCXX ?= `pkg-config computecpp --variable device_compiler`
 
-EXECUTABLE = simple-vector-add
+EXECUTABLE = lu
 
 all : $(EXECUTABLE)
 
