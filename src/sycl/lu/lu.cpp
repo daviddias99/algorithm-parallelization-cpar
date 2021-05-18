@@ -8,6 +8,7 @@
 
 #include "../../omp/lu/lu_blocks_common.h"
 #include "../../omp/lu/lu_seq.h"
+#include "../devices.h"
 #include "helper.h"
 
 #define TEST_MODE false
@@ -20,9 +21,8 @@ class lu_kernel_2;
 class lu_kernel_3;
 class lu_kernel_0;
 
-bool luFactorization(double* MA, size_t matSize, size_t blockSize,
-                     const device_selector& selector) {
-  queue Q(selector, [&](exception_list eL) {
+bool luFactorization(double* MA, size_t matSize, size_t blockSize, device dev) {
+  queue Q(dev, [&](exception_list eL) {
     try {
       for (auto& e : eL) {
         std::rethrow_exception(e);
@@ -147,15 +147,14 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize,
 }
 
 bool runExperiments(double* MA, size_t matSize, size_t blockSize, int op,
-                    const device_selector& selector, int numExperiments,
-                    double* controlMatrix) {
+                    device dev, int numExperiments, double* controlMatrix) {
   bool error;
 
   for (size_t i = 0; i < numExperiments; i++) {
     auto start = std::chrono::steady_clock::now();
     switch (op) {
       case 1:
-        error = luFactorization(MA, matSize, blockSize, selector);
+        error = luFactorization(MA, matSize, blockSize, dev);
         break;
       default:
         error = true;
@@ -228,6 +227,9 @@ int main(int argc, char* argv[]) {
   } else if (std::string(argv[4]) == "cpu") {
     gpu = false;
     cpu = true;
+  } else if (std::string(argv[4]) == "manual") {
+    gpu = false;
+    cpu = false;
   } else {
     usage(argv[0]);
     return 1;
@@ -259,15 +261,24 @@ int main(int argc, char* argv[]) {
     luSequential(controlMatrix, matSize, matSize, matSize);
   }
 
-  if (gpu)
-    error = runExperiments(originalMatrix, matSize, blockSize, op,
-                           gpu_selector{}, nruns, controlMatrix);
-  else
-    error = runExperiments(originalMatrix, matSize, blockSize, op,
-                           cpu_selector{}, nruns, controlMatrix);
+  cl::sycl::device dev;
+  if (gpu) {
+    dev = gpu_selector{}.select_device();
+  } else if (cpu) {
+    dev = cpu_selector{}.select_device();
+  } else {
+    dev = inputDevice();
+  }
 
+  if (TEST_MODE) {
+    std::cout << "Selected device: \n";
+    outputDevInfo(dev);
+  }
 
-  if(TEST_MODE)
+  error = runExperiments(originalMatrix, matSize, blockSize, op, dev, nruns,
+                         controlMatrix);
+
+  if (TEST_MODE)
     std::cout << (error ? "Error in computation." : "Success") << std::endl;
 
   delete[] originalMatrix;
