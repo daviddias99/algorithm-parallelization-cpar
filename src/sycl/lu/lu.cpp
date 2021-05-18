@@ -33,38 +33,50 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize,
   });
 
   double* diagonalBlock = MA;
+  range<2> dimensions((matSize), (matSize));
+  const property_list props = {};
+  buffer<double, 2> matrix(MA, dimensions, props);
 
   for (size_t currentDiagonalIdx = 0; currentDiagonalIdx < matSize;
        currentDiagonalIdx += blockSize) {
-    luSequential(diagonalBlock, blockSize, blockSize, matSize);
+    // luSequential(diagonalBlock, blockSize, blockSize, matSize);
 
-    if (matSize - currentDiagonalIdx <= blockSize) break;
+    // if (matSize - currentDiagonalIdx <= blockSize) break;
 
-    range<2> dimensions((matSize), (matSize));
-    const property_list props = {};
-    buffer<double, 2> matrix(MA, dimensions, props);
+    // for (size_t k = 0; k < nCols && matrix[k * matrixSize + k] != 0; k++) {
+    //   size_t offsetK = k * matrixSize;
 
-    // Q.submit([&](handler& h) {
-    //   auto matrixAcc = matrix.template
-    //   get_access<access::mode::read_write>(h);
+    //   for (size_t i = k + 1; i < nRows; i++) {
+    //     matrix[i * matrixSize + k] /= matrix[offsetK + k];
+    //   }
 
-    //   h.single_task<lu_kernel_0>([=]() {
-    //     for (size_t k = currentDiagonalIdx;
-    //          k < currentDiagonalIdx + blockSize && matrixAcc[k][k] != 0; k++)
-    //          {
-    //       for (size_t i = k + 1; i < blockSize; i++) {
-    //         matrixAcc[i][k] /= matrixAcc[k][k];
-    //       }
-
-    //       for (size_t i = k + 1; i < blockSize; i++) {
-    //         for (size_t j = k + 1; j < blockSize; j++) {
-    //           matrixAcc[i][j] -= matrixAcc[i][k] * matrixAcc[k][j];
-    //         }
-    //       }
+    //   for (size_t i = k + 1; i < nRows; i++) {
+    //     size_t offsetI = i * matrixSize;
+    //     for (size_t j = k + 1; j < nCols; j++) {
+    //       matrix[offsetI + j] -= matrix[offsetI + k] * matrix[offsetK + j];
     //     }
-    //   });
-    // });
-    // Q.wait_and_throw();
+    //   }
+    // }
+
+    Q.submit([&](handler& h) {
+      auto matrixAcc = matrix.template get_access<access::mode::read_write>(h);
+
+      h.single_task<lu_kernel_0>([=]() {
+        for (size_t k = currentDiagonalIdx;
+             k < currentDiagonalIdx + blockSize && matrixAcc[k][k] != 0; k++) {
+          for (size_t i = k + 1; i < currentDiagonalIdx + blockSize; i++) {
+            matrixAcc[i][k] /= matrixAcc[k][k];
+          }
+
+          for (size_t i = k + 1; i < currentDiagonalIdx + blockSize; i++) {
+            for (size_t j = k + 1; j < currentDiagonalIdx + blockSize; j++) {
+              matrixAcc[i][j] -= matrixAcc[i][k] * matrixAcc[k][j];
+            }
+          }
+        }
+      });
+    });
+    Q.wait_and_throw();
 
     if (matSize - currentDiagonalIdx <= blockSize) break;
 
