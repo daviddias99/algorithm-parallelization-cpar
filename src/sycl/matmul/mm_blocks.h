@@ -8,9 +8,9 @@ using namespace cl::sycl;
 
 template <typename T>
 bool matmulBlocks(T* MA, T* MB, T* MC, size_t matSize, size_t blockSize,
-                  const device_selector& selector) {
+                  device dev) {
 
-  queue Q(selector, [&](exception_list eL) {
+  queue Q(dev, [&](exception_list eL) {
     try {
       for (auto& e : eL) {
         std::rethrow_exception(e);

@@ -9,8 +9,8 @@ class matmul_kernel_naive;
 
 template <typename T>
 bool matmulNaive(T* MA, T* MB, T* MC, size_t matSize,
-                 const device_selector& selector) {
-  queue Q(selector, [&](exception_list eL) {
+                 device dev) {
+  queue Q(dev, [&](exception_list eL) {
     try {
       for (auto& e : eL) {
         std::rethrow_exception(e);

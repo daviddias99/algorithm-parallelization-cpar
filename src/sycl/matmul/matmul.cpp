@@ -4,6 +4,7 @@
 #include <ctime>
 #include <iostream>
 
+#include "../devices.h"
 #include "helper.h"
 #include "mm_blocks.h"
 #include "mm_local_mem.h"
@@ -12,34 +13,34 @@
 using namespace cl::sycl;
 
 template <typename T>
-bool runExperiments(T* MA, T* MB, T* MC, size_t matSize, size_t blockSize, int op,
-                    const device_selector& selector, int numExperiments) {
+bool runExperiments(T* MA, T* MB, T* MC, size_t matSize, size_t blockSize,
+                    int op, device dev, int numExperiments) {
   bool error;
 
-  for (size_t i = 0; i < numExperiments; i++)
-  {
+  for (size_t i = 0; i < numExperiments; i++) {
     auto start = std::chrono::steady_clock::now();
     switch (op) {
       case 1:
-        error = matmulNaive(MA, MB, MC, matSize, selector);
+        error = matmulNaive(MA, MB, MC, matSize, dev);
         break;
       case 2:
-        error = matmulBlocks(MA, MB, MC, matSize, blockSize, selector);
+        error = matmulBlocks(MA, MB, MC, matSize, blockSize, dev);
         break;
       case 3:
-        error = matmulBlocksLocalMem(MA, MB, MC, matSize, blockSize, selector);
+        error = matmulBlocksLocalMem(MA, MB, MC, matSize, blockSize, dev);
         break;
       default:
         error = true;
         break;
     }
     auto end = std::chrono::steady_clock::now();
-    auto time = std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-                    .count();
+    auto time =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+            .count();
     float flops =
         (2.0f * matSize * matSize * matSize / (time / 1000000.0f)) * 1.0e-9f;
 
-    if(TEST_MODE) {
+    if (TEST_MODE) {
       std::cout << "Time: " << time << std::endl;
       std::cout << "GFLOPs: " << flops << std::endl;
       testError(error, matSize, MB, MC);
@@ -47,12 +48,12 @@ bool runExperiments(T* MA, T* MB, T* MC, size_t matSize, size_t blockSize, int o
         for (int j = 0; j < matSize; j++) {
           MC[i * matSize + j] = 0.0f;  // i * matSize + j;
         }
-    }
-    else {
-      std::cout << op << " " << matSize << " " << blockSize << " " << time/ 1000000.0 << " N/A" << std::endl;
+    } else {
+      std::cout << op << " " << matSize << " " << blockSize << " "
+                << time / 1000000.0 << " N/A" << std::endl;
     }
   }
-  
+
   return error;
 }
 
@@ -86,7 +87,7 @@ int main(int argc, char* argv[]) {
   try {
     op = std::stoi(argv[3]);
 
-    if (op <= 0 || op >= 4){
+    if (op <= 0 || op >= 4) {
       usage(argv[0]);
       return 1;
     }
@@ -101,12 +102,15 @@ int main(int argc, char* argv[]) {
   } else if (std::string(argv[4]) == "cpu") {
     gpu = false;
     cpu = true;
+  } else if (std::string(argv[4]) == "manual") {
+    gpu = false;
+    cpu = false;
   } else {
     usage(argv[0]);
     return 1;
   }
-  
-  if(argc == 6) {
+
+  if (argc == 6) {
     try {
       nruns = std::stoi(argv[5]);
     } catch (...) {
@@ -130,10 +134,21 @@ int main(int argc, char* argv[]) {
       MC[i * matSize + j] = 0.0f;
     }
 
-  if(gpu)
-    runExperiments(MA, MB, MC, matSize, blockSize, op, gpu_selector{}, nruns);
-  else
-    runExperiments(MA, MB, MC, matSize, blockSize, op, cpu_selector{}, nruns);
+  cl::sycl::device dev;
+  if (gpu) {
+    dev = gpu_selector{}.select_device();
+  } else if (cpu) {
+    dev = cpu_selector{}.select_device();
+  } else {
+    dev = inputDevice();
+  }
+
+  if (TEST_MODE) {
+    std::cout << "Selected device: \n";
+    outputDevInfo(dev);
+  }
+
+  runExperiments(MA, MB, MC, matSize, blockSize, op, dev, nruns);
 
   delete[] MA;
   delete[] MB;
