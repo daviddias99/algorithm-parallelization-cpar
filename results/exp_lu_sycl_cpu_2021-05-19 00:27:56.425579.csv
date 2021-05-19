@@ -1,0 +1,25 @@
+Exp,Op,Matrix Size,Block Size,Time,P
+lu_sycl_cpu,1,1024,32,0.326404,N/A
+lu_sycl_cpu,1,1024,32,0.207378,N/A
+lu_sycl_cpu,1,1024,32,0.216779,N/A
+lu_sycl_cpu,1,2048,32,1.06442,N/A
+lu_sycl_cpu,1,2048,32,0.968356,N/A
+lu_sycl_cpu,1,2048,32,0.964922,N/A
+lu_sycl_cpu,1,3072,32,2.8345,N/A
+lu_sycl_cpu,1,3072,32,2.74071,N/A
+lu_sycl_cpu,1,3072,32,2.73653,N/A
+lu_sycl_cpu,1,4096,32,7.24471,N/A
+lu_sycl_cpu,1,4096,32,7.21834,N/A
+lu_sycl_cpu,1,4096,32,7.11592,N/A
+lu_sycl_cpu,1,5120,32,12.8177,N/A
+lu_sycl_cpu,1,5120,32,12.6913,N/A
+lu_sycl_cpu,1,5120,32,12.697,N/A
+lu_sycl_cpu,1,6144,32,23.6358,N/A
+lu_sycl_cpu,1,6144,32,23.5107,N/A
+lu_sycl_cpu,1,6144,32,23.5739,N/A
+lu_sycl_cpu,1,7168,32,34.5637,N/A
+lu_sycl_cpu,1,7168,32,34.5018,N/A
+lu_sycl_cpu,1,7168,32,34.4639,N/A
+lu_sycl_cpu,1,8192,32,55.5648,N/A
+lu_sycl_cpu,1,8192,32,55.5068,N/A
+lu_sycl_cpu,1,8192,32,55.5201,N/A

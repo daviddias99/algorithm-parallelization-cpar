@@ -1,0 +1,25 @@
+Exp,Op,Matrix Size,Block Size,Time,P
+lu_sycl_gpu,1,1024,8,0.172544,N/A
+lu_sycl_gpu,1,1024,8,0.1288,N/A
+lu_sycl_gpu,1,1024,8,0.116984,N/A
+lu_sycl_gpu,1,2048,8,0.258175,N/A
+lu_sycl_gpu,1,2048,8,0.251501,N/A
+lu_sycl_gpu,1,2048,8,0.248504,N/A
+lu_sycl_gpu,1,3072,8,0.537587,N/A
+lu_sycl_gpu,1,3072,8,0.53719,N/A
+lu_sycl_gpu,1,3072,8,0.538064,N/A
+lu_sycl_gpu,1,4096,8,1.04423,N/A
+lu_sycl_gpu,1,4096,8,1.04227,N/A
+lu_sycl_gpu,1,4096,8,1.04072,N/A
+lu_sycl_gpu,1,5120,8,1.84162,N/A
+lu_sycl_gpu,1,5120,8,1.84838,N/A
+lu_sycl_gpu,1,5120,8,1.84501,N/A
+lu_sycl_gpu,1,6144,8,3.00082,N/A
+lu_sycl_gpu,1,6144,8,3.00805,N/A
+lu_sycl_gpu,1,6144,8,3.01065,N/A
+lu_sycl_gpu,1,7168,8,4.58724,N/A
+lu_sycl_gpu,1,7168,8,4.59047,N/A
+lu_sycl_gpu,1,7168,8,4.59523,N/A
+lu_sycl_gpu,1,8192,8,6.68699,N/A
+lu_sycl_gpu,1,8192,8,6.69683,N/A
+lu_sycl_gpu,1,8192,8,6.71578,N/A
