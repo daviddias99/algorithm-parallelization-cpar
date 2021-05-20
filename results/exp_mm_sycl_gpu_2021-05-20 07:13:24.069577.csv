@@ -1,0 +1,25 @@
+Exp,Op,Matrix Size,Block Size,Time,P
+matmul_sycl_gpu,2,1024,8,0.150571,N/A
+matmul_sycl_gpu,2,1024,8,0.115751,N/A
+matmul_sycl_gpu,2,1024,8,0.108725,N/A
+matmul_sycl_gpu,2,2048,8,0.366651,N/A
+matmul_sycl_gpu,2,2048,8,0.348461,N/A
+matmul_sycl_gpu,2,2048,8,0.355474,N/A
+matmul_sycl_gpu,2,3072,8,1.04911,N/A
+matmul_sycl_gpu,2,3072,8,1.02069,N/A
+matmul_sycl_gpu,2,3072,8,1.01124,N/A
+matmul_sycl_gpu,2,4096,8,2.29633,N/A
+matmul_sycl_gpu,2,4096,8,2.26336,N/A
+matmul_sycl_gpu,2,4096,8,2.25663,N/A
+matmul_sycl_gpu,2,5120,8,4.34512,N/A
+matmul_sycl_gpu,2,5120,8,4.31508,N/A
+matmul_sycl_gpu,2,5120,8,4.29866,N/A
+matmul_sycl_gpu,2,6144,8,7.61449,N/A
+matmul_sycl_gpu,2,6144,8,7.5728,N/A
+matmul_sycl_gpu,2,6144,8,7.61322,N/A
+matmul_sycl_gpu,2,7168,8,11.7558,N/A
+matmul_sycl_gpu,2,7168,8,11.7384,N/A
+matmul_sycl_gpu,2,7168,8,11.737,N/A
+matmul_sycl_gpu,2,8192,8,17.4317,N/A
+matmul_sycl_gpu,2,8192,8,17.5173,N/A
+matmul_sycl_gpu,2,8192,8,17.6053,N/A

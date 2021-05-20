@@ -67,7 +67,9 @@ experiments_lu_sycl_gpu = [
 experiments_mm_omp = [
 
   # OMP Seq Block
-  ['matmul_omp_1', 1, 3, 1],
+  ['matmul_omp_1', 1, 3, 128],
+  ['matmul_omp_1', 1, 3, 256],
+  ['matmul_omp_1', 1, 3, 512],
 
   # OMP Collapse
   ['matmul_omp_1', 3, 3, 128],
