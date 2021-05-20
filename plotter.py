@@ -18,10 +18,10 @@ def gflops_lu(mat_size): return 2/3 * (mat_size ** 3) * 1e-9
 def readExp(folder):
   newdf = [] 
   for name in glob.glob(path.join(results_dir, f'{folder}/*.csv')):
-    newdf = pd.read_csv(name)
-    newdf.append(newdf)
+    newdf.append(pd.read_csv(name))
+  frame = pd.concat(newdf, axis=0, ignore_index=True)
 
-  return pd.concat(newdf, axis=0, ignore_index=True)
+  return frame
 
 
 lu_data_df = readExp('lu_data')
@@ -36,9 +36,37 @@ mm_sycl_gpu_df = readExp('mm_sycl_gpu')
 
 
 
+mm_omp_df['Performance'] = gflops_mm(mm_omp_df['Matrix Size']) / mm_omp_df['Time']
+lu_seq_df['Performance'] = gflops_lu(lu_seq_df['Matrix Size']) / lu_seq_df['Time']
+
+colors = ['blue', 'red', 'green', 'orange', 'purple', 'yellow']
+
+def plot(df, x, y, xlabel, ylabel, legendTitle, op, p, destName, perBlock=True):
+
+  group_by = ['Matrix Size', 'Block Size'] if perBlock else ['Matrix Size'] 
+  mean = df[(df['Op'] == op) & (df['P'] == p) ].groupby(group_by, as_index=False).mean()
+
+  if perBlock:
+    for bs, color in zip([128, 256, 512], colors):
+      plot = mean[mean['Block Size'] == bs]
+      plt.plot(plot[x], plot[y],  '-x', color=color, label=str(bs))
+      plt.legend(title=legendTitle)
+  else:
+      plt.plot(mean[x], mean[y],  '-x', color=colors[0])
+
+  plt.ylabel(ylabel)
+  plt.xlabel(xlabel)
+  plt.ylim(bottom=0)
+  plt.savefig(path.join(plots_dir, f'{destName}.png'))
+  plt.cla()
 
 
-
+plot(mm_omp_df, 'Matrix Size', 'Time', 'Matrix Size', 'Time (s)', 'Block Size', 1, 1, 'mm_1_time')
+plot(mm_omp_df, 'Matrix Size', 'Performance', 'Matrix Size', 'Gflop/s', 'Block Size', 1, 1, 'mm_1_perf')
+plot(lu_seq_df, 'Matrix Size', 'Time', 'Matrix Size', 'Time (s)', 'Block Size', 1, 1, 'lu_1_time', False)
+plot(lu_seq_df, 'Matrix Size', 'Performance', 'Matrix Size', 'Gflop/s', 'Block Size', 1, 1, 'lu_1_perf', False)
+plot(lu_seq_df, 'Matrix Size', 'Time', 'Matrix Size', 'Time (s)', 'Block Size', 2, 1, 'lu_2_time')
+plot(lu_seq_df, 'Matrix Size', 'Performance', 'Matrix Size', 'Gflop/s', 'Block Size', 2, 1, 'lu_2_perf')
 
 
 
