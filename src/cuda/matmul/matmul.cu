@@ -116,8 +116,11 @@ int main(int argc, char *argv[]) {
   cudaMemcpy(Md, M, matrixSize*matrixSize * sizeof(double), cudaMemcpyHostToDevice);
   cudaMemcpy(Nd, N, matrixSize*matrixSize * sizeof(double), cudaMemcpyHostToDevice);
   cudaMemcpy(Pd, P, matrixSize*matrixSize * sizeof(double), cudaMemcpyHostToDevice);
-  dim3 dimGrid(matrixSize/TILE_WIDTH, matrixSize/TILE_WIDTH);
-  dim3 dimBlock(TILE_WIDTH, TILE_WIDTH); 
+  dim3 dimGrid(matrixSize/blockSize, matrixSize/blockSize);
+  dim3 dimBlock(blockSize, blockSize); 
+
+  if(op == 2)
+    cudaDeviceSetLimit(cudaLimitMallocHeapSize,matrixSize * matrixSize * sizeof(double));
 
   for(int i = 0; i < runs; i++) {
     // Start counting
@@ -128,7 +131,6 @@ int main(int argc, char *argv[]) {
         MatrixMulKernelBlockLocalMemFixed<<<dimGrid, dimBlock>>>(Md, Nd, Pd, matrixSize);
         break;
       case 2:
-        cudaDeviceSetLimit(cudaLimitMallocHeapSize,matrixSize * matrixSize * sizeof(double));
         MatrixMulKernelBlockLocalMem<<<dimGrid, dimBlock>>>(Md, Nd, Pd, matrixSize, blockSize);
         break;
       case 3:
@@ -137,20 +139,21 @@ int main(int argc, char *argv[]) {
     }
 
     cudaDeviceSynchronize(); 
-    gpuErrchk( cudaPeekAtLastError() );
 
     auto end = std::chrono::steady_clock::now();
     auto elapsed = chrono::duration_cast<std::chrono::microseconds>(end - begin);
     cout << 1 << " " << matrixSize << " " << blockSize << " " << elapsed.count()/ 1000000.0  << " N/A" << endl;
     
     if(TEST_MODE){
+      gpuErrchk( cudaPeekAtLastError() );
+      cudaMemcpy(P, Pd, matrixSize*matrixSize * sizeof(double), cudaMemcpyDeviceToHost);
+      cout << P[(matrixSize*(matrixSize-1) + matrixSize - 1)] << endl;
       float flops =(2.0f * matrixSize * matrixSize * matrixSize / (elapsed.count() / 1000000.0f)) * 1.0e-9f;
       cout << flops << endl;
     }
   }
 
-  cudaMemcpy(P, Pd, matrixSize*matrixSize * sizeof(double), cudaMemcpyDeviceToHost);
-  cout << P[(matrixSize*(matrixSize-1) + matrixSize - 1)] << endl;
+
   cudaFree(Md);
   cudaFree(Nd);
   cudaFree(Pd);

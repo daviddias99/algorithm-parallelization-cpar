@@ -60,12 +60,12 @@ def run_experiment(exp):
 
 
 compile_cuda('matmul', 'matmul.cu')
-compile_omp('lu', 'lu.cpp', 'lu_seq.h', 4)
-compile_omp('matmul', 'matmul.cpp', 'matmul.cpp',4)
-compile_sycl_gpu('lu', 'lu.cpp')
-compile_sycl_gpu('matmul', 'matmul.cpp')
-compile_sycl_cpu('lu', 'lu')
-compile_sycl_cpu('matmul', 'matmul')
+# compile_omp('lu', 'lu.cpp', 'lu_seq.h', 4)
+# compile_omp('matmul', 'matmul.cpp', 'matmul.cpp',4)
+# compile_sycl_gpu('lu', 'lu.cpp')
+# compile_sycl_gpu('matmul', 'matmul.cpp')
+# compile_sycl_cpu('lu', 'lu')
+# compile_sycl_cpu('matmul', 'matmul')
 
 # print('LU Sequential')
 # for exp in tqdm(exps.experiments_lu_seq):
@@ -97,11 +97,11 @@ compile_sycl_cpu('matmul', 'matmul')
 #   res = run_experiment(exp)
 #   res.to_csv(res_path, index=False, header=True)
 
-print('MM OMP')
-for exp in tqdm(exps.experiments_mm_omp):
-  res_path = os.path.join(results_path, 'exp_{}_{}.csv'.format('mm_omp', datetime.now()))
-  res = run_experiment(exp)
-  res.to_csv(res_path, index=False, header=True)
+# print('MM OMP')
+# for exp in tqdm(exps.experiments_mm_omp):
+#   res_path = os.path.join(results_path, 'exp_{}_{}.csv'.format('mm_omp', datetime.now()))
+#   res = run_experiment(exp)
+#   res.to_csv(res_path, index=False, header=True)
 
 print('MM CUDA')
 for exp in tqdm(exps.experiments_mm_cuda):
@@ -109,14 +109,14 @@ for exp in tqdm(exps.experiments_mm_cuda):
   res = run_experiment(exp)
   res.to_csv(res_path, index=False, header=True)
 
-print('MM Sycl CPU')
-for exp in tqdm(exps.experiments_mm_sycl_cpu):
-  res_path = os.path.join(results_path, 'exp_{}_{}.csv'.format('lu_sycl_cpu', datetime.now()))
-  res = run_experiment(exp)
-  res.to_csv(res_path, index=False, header=True)
+# print('MM Sycl CPU')
+# for exp in tqdm(exps.experiments_mm_sycl_cpu):
+#   res_path = os.path.join(results_path, 'exp_{}_{}.csv'.format('mm_sycl_cpu', datetime.now()))
+#   res = run_experiment(exp)
+#   res.to_csv(res_path, index=False, header=True)
 
-print('MM Sycl GPU')
-for exp in tqdm(exps.experiments_mm_sycl_gpu):
-  res_path = os.path.join(results_path, 'exp_{}_{}.csv'.format('mm_sycl_gpu', datetime.now()))
-  res = run_experiment(exp)
-  res.to_csv(res_path, index=False, header=True)
+# print('MM Sycl GPU')
+# for exp in tqdm(exps.experiments_mm_sycl_gpu):
+#   res_path = os.path.join(results_path, 'exp_{}_{}.csv'.format('mm_sycl_gpu', datetime.now()))
+#   res = run_experiment(exp)
+#   res.to_csv(res_path, index=False, header=True)
