@@ -35,13 +35,13 @@ mm_sycl_cpu_df = readExp('mm_sycl_cpu')
 mm_sycl_gpu_df = readExp('mm_sycl_gpu')
 
 
-
 mm_omp_df['Performance'] = gflops_mm(mm_omp_df['Matrix Size']) / mm_omp_df['Time']
 lu_seq_df['Performance'] = gflops_lu(lu_seq_df['Matrix Size']) / lu_seq_df['Time']
 
-colors = ['blue', 'red', 'green', 'orange', 'purple', 'yellow']
+colors = ['blue', 'red', 'green', 'orange', 'purple']
 
-def plot(df, x, y, xlabel, ylabel, legendTitle, op, p, destName, perBlock=True):
+# MM Seq
+def plotMMSeq(df, x, y, xlabel, ylabel, legendTitle, op, p, destName, perBlock=True):
 
   group_by = ['Matrix Size', 'Block Size'] if perBlock else ['Matrix Size'] 
   mean = df[(df['Op'] == op) & (df['P'] == p) ].groupby(group_by, as_index=False).mean()
@@ -61,12 +61,43 @@ def plot(df, x, y, xlabel, ylabel, legendTitle, op, p, destName, perBlock=True):
   plt.cla()
 
 
-plot(mm_omp_df, 'Matrix Size', 'Time', 'Matrix Size', 'Time (s)', 'Block Size', 1, 1, 'mm_1_time')
-plot(mm_omp_df, 'Matrix Size', 'Performance', 'Matrix Size', 'Gflop/s', 'Block Size', 1, 1, 'mm_1_perf')
-plot(lu_seq_df, 'Matrix Size', 'Time', 'Matrix Size', 'Time (s)', 'Block Size', 1, 1, 'lu_1_time', False)
-plot(lu_seq_df, 'Matrix Size', 'Performance', 'Matrix Size', 'Gflop/s', 'Block Size', 1, 1, 'lu_1_perf', False)
-plot(lu_seq_df, 'Matrix Size', 'Time', 'Matrix Size', 'Time (s)', 'Block Size', 2, 1, 'lu_2_time')
-plot(lu_seq_df, 'Matrix Size', 'Performance', 'Matrix Size', 'Gflop/s', 'Block Size', 2, 1, 'lu_2_perf')
+plotMMSeq(mm_omp_df, 'Matrix Size', 'Time', 'Matrix Size', 'Time (s)', 'Block Size', 1, 1, 'mm_1_time')
+plotMMSeq(mm_omp_df, 'Matrix Size', 'Performance', 'Matrix Size', 'Gflop/s', 'Block Size', 1, 1, 'mm_1_perf')
+
+# LU Seq
+group_by = ['Matrix Size', 'Block Size'] 
+mean = lu_seq_df[(lu_seq_df['Op'] == 2) & (lu_seq_df['P'] == 1) ].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([128, 256, 512], colors):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Time'],  '-x', color=color, label=f'Blocked ({bs})')
+
+group_by = ['Matrix Size'] 
+mean = lu_seq_df[(lu_seq_df['Op'] == 1) & (lu_seq_df['P'] == 1) ].groupby(group_by, as_index=False).mean()
+plt.plot(mean['Matrix Size'], mean['Time'],  '-x', color=colors[-1], label=f'Naive ({bs})')
+plt.legend(title='Operation')
+plt.ylabel('Time (s)')
+plt.xlabel('Matrix Size')
+plt.ylim(bottom=0)
+plt.savefig(path.join(plots_dir, f'lu_1_2_time.png'))
+plt.cla()
+
+group_by = ['Matrix Size', 'Block Size'] 
+mean = lu_seq_df[(lu_seq_df['Op'] == 2) & (lu_seq_df['P'] == 1) ].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([128, 256, 512], colors):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Performance'],  '-x', color=color, label=f'Blocked ({bs})')
+
+group_by = ['Matrix Size'] 
+mean = lu_seq_df[(lu_seq_df['Op'] == 1) & (lu_seq_df['P'] == 1) ].groupby(group_by, as_index=False).mean()
+plt.plot(mean['Matrix Size'], mean['Performance'],  '-x', color=colors[-1], label=f'Naive')
+plt.legend(title='Operation')
+plt.ylabel('Performance (Gflop/s)')
+plt.xlabel('Matrix Size')
+plt.ylim(bottom=0)
+plt.savefig(path.join(plots_dir, f'lu_1_2_perf.png'))
+plt.cla()
 
 
 
@@ -74,14 +105,4 @@ plot(lu_seq_df, 'Matrix Size', 'Performance', 'Matrix Size', 'Gflop/s', 'Block S
 
 
 
-# fig, subplots = plt.subplots(2, 2)
 
-# df_1 = pd.read_csv(path.join(results_dir, 'exp_lu_seq_2021-05-18 17:16:55.349558.csv'))
-# df_1['Performance'] = gflops_lu(df_1['Matrix Size']) / df_1['Time']
-
-# time_mean = df_1.groupby('Matrix Size', as_index=False).mean()
-
-# subplots[0,0].scatter(time_mean['Matrix Size'], time_mean['Time'])
-# subplots[0,1].scatter(time_mean['Matrix Size'], time_mean['Performance'])
-# subplots[0,1].set_ylim(bottom=0)
-# plt.show()

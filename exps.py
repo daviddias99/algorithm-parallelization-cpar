@@ -52,9 +52,9 @@ experiments_lu_par_func = [
 
 experiments_lu_sycl_cpu = [
   # Sycl CPU
-  ['lu_sycl_cpu', 8 , 1, 'cpu', 3],
-  ['lu_sycl_cpu', 16, 1, 'cpu', 3],
-  ['lu_sycl_cpu', 32, 1, 'cpu', 3],
+  ['lu_sycl_cpu', 128 , 1, 'cpu', 3],
+  ['lu_sycl_cpu', 256, 1, 'cpu', 3],
+  ['lu_sycl_cpu', 512, 1, 'cpu', 3],
 ]
 
 experiments_lu_sycl_gpu = [
@@ -101,19 +101,19 @@ experiments_mm_cuda = [
 experiments_mm_sycl_cpu = [
 
   # Sycl CPU Naive
-  ['matmul_sycl_cpu', 8 , 1, 'cpu', 3],
-  ['matmul_sycl_cpu', 16, 1, 'cpu', 3],
-  ['matmul_sycl_cpu', 32, 1, 'cpu', 3],
+  ['matmul_sycl_cpu', 128, 1, 'cpu', 3],
+  ['matmul_sycl_cpu', 256, 1, 'cpu', 3],
+  ['matmul_sycl_cpu', 512, 1, 'cpu', 3],
 
   # Sycl CPU Block
-  ['matmul_sycl_cpu', 8 , 2, 'cpu', 3],
-  ['matmul_sycl_cpu', 16, 2, 'cpu', 3],
-  ['matmul_sycl_cpu', 32, 2, 'cpu', 3],
+  ['matmul_sycl_cpu', 128, 2, 'cpu', 3],
+  ['matmul_sycl_cpu', 256, 2, 'cpu', 3],
+  ['matmul_sycl_cpu', 512, 2, 'cpu', 3],
 
   # Sycl CPU Block Local Mem
-  ['matmul_sycl_cpu', 8 , 3, 'cpu', 3],
-  ['matmul_sycl_cpu', 16, 3, 'cpu', 3],
-  ['matmul_sycl_cpu', 32, 3, 'cpu', 3],
+  ['matmul_sycl_cpu', 128, 3, 'cpu', 3],
+  ['matmul_sycl_cpu', 256, 3, 'cpu', 3],
+  ['matmul_sycl_cpu', 512, 3, 'cpu', 3],
 ]
 
 experiments_mm_sycl_gpu = [

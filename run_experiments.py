@@ -59,7 +59,7 @@ def run_experiment(exp):
   return pd.DataFrame(results, columns=['Exp', 'Op', 'Matrix Size', 'Block Size', 'Time', 'P'])
 
 
-compile_cuda('matmul', 'matmul.cu')
+# compile_cuda('matmul', 'matmul.cu')
 # compile_omp('lu', 'lu.cpp', 'lu_seq.h', 4)
 # compile_omp('matmul', 'matmul.cpp', 'matmul.cpp',4)
 # compile_sycl_gpu('lu', 'lu.cpp')
@@ -85,11 +85,11 @@ compile_cuda('matmul', 'matmul.cu')
 #   res = run_experiment(exp)
 #   res.to_csv(res_path, index=False, header=True)
 
-# print('LU Sycl CPU')
-# for exp in tqdm(exps.experiments_lu_sycl_cpu):
-#   res_path = os.path.join(results_path, 'exp_{}_{}.csv'.format('lu_sycl_cpu', datetime.now()))
-#   res = run_experiment(exp)
-#   res.to_csv(res_path, index=False, header=True)
+print('LU Sycl CPU')
+for exp in tqdm(exps.experiments_lu_sycl_cpu):
+  res_path = os.path.join(results_path, 'exp_{}_{}.csv'.format('lu_sycl_cpu', datetime.now()))
+  res = run_experiment(exp)
+  res.to_csv(res_path, index=False, header=True)
 
 # print('LU Sycl GPU')
 # for exp in tqdm(exps.experiments_lu_sycl_gpu):
@@ -103,17 +103,17 @@ compile_cuda('matmul', 'matmul.cu')
 #   res = run_experiment(exp)
 #   res.to_csv(res_path, index=False, header=True)
 
-print('MM CUDA')
-for exp in tqdm(exps.experiments_mm_cuda):
-  res_path = os.path.join(results_path, 'exp_{}_{}.csv'.format('mm_cuda', datetime.now()))
-  res = run_experiment(exp)
-  res.to_csv(res_path, index=False, header=True)
-
-# print('MM Sycl CPU')
-# for exp in tqdm(exps.experiments_mm_sycl_cpu):
-#   res_path = os.path.join(results_path, 'exp_{}_{}.csv'.format('mm_sycl_cpu', datetime.now()))
+# print('MM CUDA')
+# for exp in tqdm(exps.experiments_mm_cuda):
+#   res_path = os.path.join(results_path, 'exp_{}_{}.csv'.format('mm_cuda', datetime.now()))
 #   res = run_experiment(exp)
 #   res.to_csv(res_path, index=False, header=True)
+
+print('MM Sycl CPU')
+for exp in tqdm(exps.experiments_mm_sycl_cpu):
+  res_path = os.path.join(results_path, 'exp_{}_{}.csv'.format('mm_sycl_cpu', datetime.now()))
+  res = run_experiment(exp)
+  res.to_csv(res_path, index=False, header=True)
 
 # print('MM Sycl GPU')
 # for exp in tqdm(exps.experiments_mm_sycl_gpu):
