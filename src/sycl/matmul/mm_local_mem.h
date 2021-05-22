@@ -9,9 +9,9 @@ class matmul_kernel_local_mem;
 
 template <typename T>
 bool matmulBlocksLocalMem(T* MA, T* MB, T* MC, size_t matSize, size_t blockSize,
-                  const device_selector& selector) {
+                  device dev) {
 
-  queue Q(selector, [&](exception_list eL) {
+  queue Q(dev, [&](exception_list eL) {
     try {
       for (auto& e : eL) {
         std::rethrow_exception(e);
