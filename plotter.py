@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 import glob
+import matplotlib.colors
 
 from pandas.core.frame import DataFrame
 
@@ -20,7 +21,7 @@ def readExp(folder):
   for name in glob.glob(path.join(results_dir, f'{folder}/*.csv')):
     newdf.append(pd.read_csv(name))
   frame = pd.concat(newdf, axis=0, ignore_index=True)
-
+  frame = frame.drop('Exp', axis=1)
   return frame
 
 
@@ -36,11 +37,16 @@ mm_sycl_gpu_df = readExp('mm_sycl_gpu')
 
 
 mm_omp_df['Performance'] = gflops_mm(mm_omp_df['Matrix Size']) / mm_omp_df['Time']
-lu_seq_df['Performance'] = gflops_lu(lu_seq_df['Matrix Size']) / lu_seq_df['Time']
+mm_cuda_df['Performance'] = gflops_mm(mm_cuda_df['Matrix Size']) / mm_cuda_df['Time']
+mm_sycl_cpu_df['Performance'] = gflops_mm(mm_sycl_cpu_df['Matrix Size']) / mm_sycl_cpu_df['Time']
+mm_sycl_gpu_df['Performance'] = gflops_mm(mm_sycl_gpu_df['Matrix Size']) / mm_sycl_gpu_df['Time']
+lu_seq_df['Performance'] = gflops_mm(lu_seq_df['Matrix Size']) / lu_seq_df['Time']
+lu_sycl_cpu_df['Performance'] = gflops_lu(lu_sycl_cpu_df['Matrix Size']) / lu_sycl_cpu_df['Time']
+lu_sycl_gpu_df['Performance'] = gflops_lu(lu_sycl_gpu_df['Matrix Size']) / lu_sycl_gpu_df['Time']
 
-colors = ['blue', 'red', 'green', 'orange', 'purple']
+colors = ['red', 'green', 'blue', 'cyan', 'magenta','yellow','lightsalmon', 'lightgreen', 'purple', 'purple']
 
-# MM Seq
+# MM Seq ----------------------------------------------------------------------------------------
 def plotMMSeq(df, x, y, xlabel, ylabel, legendTitle, op, p, destName, perBlock=True):
 
   group_by = ['Matrix Size', 'Block Size'] if perBlock else ['Matrix Size'] 
@@ -64,7 +70,7 @@ def plotMMSeq(df, x, y, xlabel, ylabel, legendTitle, op, p, destName, perBlock=T
 plotMMSeq(mm_omp_df, 'Matrix Size', 'Time', 'Matrix Size', 'Time (s)', 'Block Size', 1, 1, 'mm_1_time')
 plotMMSeq(mm_omp_df, 'Matrix Size', 'Performance', 'Matrix Size', 'Gflop/s', 'Block Size', 1, 1, 'mm_1_perf')
 
-# LU Seq
+# LU Seq ----------------------------------------------------------------------------------------
 group_by = ['Matrix Size', 'Block Size'] 
 mean = lu_seq_df[(lu_seq_df['Op'] == 2) & (lu_seq_df['P'] == 1) ].groupby(group_by, as_index=False).mean()
 
@@ -99,9 +105,155 @@ plt.ylim(bottom=0)
 plt.savefig(path.join(plots_dir, f'lu_1_2_perf.png'))
 plt.cla()
 
+# MM Cuda ----------------------------------------------------------------------------------------
 
+group_by = ['Matrix Size', 'Block Size'] 
+mean = mm_cuda_df[(mm_cuda_df['Op'] == 2)].groupby(group_by, as_index=False).mean()
 
+for bs, color in zip([8, 16, 32], colors):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Performance'],  '-x', color=color, label=f'W Local Mem  ({bs})')
 
+mean = mm_cuda_df[(mm_cuda_df['Op'] == 3)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors[3:]):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Performance'],  '-x', color=color, label=f'W/o Local Mem ({bs})')
+
+# plt.legend(title='Operation')
+plt.ylabel('Performance (Gflop/s)')
+plt.xlabel('Matrix Size')
+plt.ylim(bottom=0)
+plt.savefig(path.join(plots_dir, f'mm_cuda_block_perf.png'))
+plt.cla()
+
+group_by = ['Matrix Size', 'Block Size'] 
+mean = mm_cuda_df[(mm_cuda_df['Op'] == 2)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Time'],  '-x', color=color, label=f'W/ Local Mem  ({bs})')
+
+mean = mm_cuda_df[(mm_cuda_df['Op'] == 3)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors[3:]):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Time'],  '-x', color=color, label=f'W/o Local Mem ({bs})')
+
+plt.legend(title='Operation')
+plt.ylabel('Time (s)')
+plt.xlabel('Matrix Size')
+plt.ylim(bottom=0)
+plt.savefig(path.join(plots_dir, f'mm_cuda_block_time.png'))
+plt.cla()
+
+# MM Sycl CPU ----------------------------------------------------------------------------------------
+
+group_by = ['Matrix Size', 'Block Size'] 
+mean = mm_sycl_cpu_df[(mm_sycl_cpu_df['Op'] == 1)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Performance'],  '-x', color=color, label=f'Naive ({bs})')
+group_by = ['Matrix Size', 'Block Size'] 
+mean = mm_sycl_cpu_df[(mm_sycl_cpu_df['Op'] == 2)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors[3:]):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Performance'],  '-x', color=color, label=f'W/o Local Mem  ({bs})')
+
+mean = mm_sycl_cpu_df[(mm_sycl_cpu_df['Op'] == 3)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors[6:]):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Performance'],  '-x', color=color, label=f'W/ Local Mem ({bs})')
+
+# plt.legend(title='Operation')
+plt.ylabel('Performance (Gflop/s)')
+plt.xlabel('Matrix Size')
+plt.ylim(bottom=0)
+plt.savefig(path.join(plots_dir, f'mm_sycl_cpu_perf.png'))
+plt.cla()
+
+group_by = ['Matrix Size', 'Block Size'] 
+mean = mm_sycl_cpu_df[(mm_sycl_cpu_df['Op'] == 1)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Time'],  '-x', color=color, label=f'Naive  ({bs})')
+group_by = ['Matrix Size', 'Block Size'] 
+mean = mm_sycl_cpu_df[(mm_sycl_cpu_df['Op'] == 2)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors[3:]):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Time'],  '-x', color=color, label=f'W/o Local Mem  ({bs})')
+
+mean = mm_sycl_cpu_df[(mm_sycl_cpu_df['Op'] == 3)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors[6:]):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Time'],  '-x', color=color, label=f'W/ Local Mem ({bs})')
+
+plt.legend(title='Operation')
+plt.ylabel('Time (s)')
+plt.xlabel('Matrix Size')
+plt.ylim(bottom=0)
+plt.savefig(path.join(plots_dir, f'mm_sycl_cpu_time.png'))
+plt.cla()
+
+# MM Sycl GPU ----------------------------------------------------------------------------------------
+
+group_by = ['Matrix Size', 'Block Size'] 
+mean = mm_sycl_gpu_df[(mm_sycl_gpu_df['Op'] == 1)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Performance'],  '-x', color=color, label=f'Naive ({bs})')
+group_by = ['Matrix Size', 'Block Size'] 
+mean = mm_sycl_gpu_df[(mm_sycl_gpu_df['Op'] == 2)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors[3:]):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Performance'],  '-x', color=color, label=f'W/o Local Mem  ({bs})')
+
+mean = mm_sycl_gpu_df[(mm_sycl_gpu_df['Op'] == 3)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors[6:]):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Performance'],  '-x', color=color, label=f'W/ Local Mem ({bs})')
+
+# plt.legend(title='Operation')
+plt.ylabel('Performance (Gflop/s)')
+plt.xlabel('Matrix Size')
+plt.ylim(bottom=0)
+plt.savefig(path.join(plots_dir, f'mm_sycl_gpu_perf.png'))
+plt.cla()
+
+group_by = ['Matrix Size', 'Block Size'] 
+mean = mm_sycl_gpu_df[(mm_sycl_gpu_df['Op'] == 1)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Time'],  '-x', color=color, label=f'Naive  ({bs})')
+group_by = ['Matrix Size', 'Block Size'] 
+mean = mm_sycl_gpu_df[(mm_sycl_gpu_df['Op'] == 2)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors[3:]):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Time'],  '-x', color=color, label=f'W/o Local Mem  ({bs})')
+
+mean = mm_sycl_gpu_df[(mm_sycl_gpu_df['Op'] == 3)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors[6:]):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Time'],  '-x', color=color, label=f'W/ Local Mem ({bs})')
+
+plt.legend(title='Operation')
+plt.ylabel('Time (s)')
+plt.xlabel('Matrix Size')
+plt.ylim(bottom=0)
+plt.savefig(path.join(plots_dir, f'mm_sycl_gpu_time.png'))
+plt.cla()
 
 
 

@@ -103,17 +103,17 @@ for exp in tqdm(exps.experiments_lu_sycl_cpu):
 #   res = run_experiment(exp)
 #   res.to_csv(res_path, index=False, header=True)
 
-# print('MM CUDA')
-# for exp in tqdm(exps.experiments_mm_cuda):
-#   res_path = os.path.join(results_path, 'exp_{}_{}.csv'.format('mm_cuda', datetime.now()))
-#   res = run_experiment(exp)
-#   res.to_csv(res_path, index=False, header=True)
-
-print('MM Sycl CPU')
-for exp in tqdm(exps.experiments_mm_sycl_cpu):
-  res_path = os.path.join(results_path, 'exp_{}_{}.csv'.format('mm_sycl_cpu', datetime.now()))
+print('MM CUDA')
+for exp in tqdm(exps.experiments_mm_cuda):
+  res_path = os.path.join(results_path, 'exp_{}_{}.csv'.format('mm_cuda', datetime.now()))
   res = run_experiment(exp)
   res.to_csv(res_path, index=False, header=True)
+
+# print('MM Sycl CPU')
+# for exp in tqdm(exps.experiments_mm_sycl_cpu):
+#   res_path = os.path.join(results_path, 'exp_{}_{}.csv'.format('mm_sycl_cpu', datetime.now()))
+#   res = run_experiment(exp)
+#   res.to_csv(res_path, index=False, header=True)
 
 # print('MM Sycl GPU')
 # for exp in tqdm(exps.experiments_mm_sycl_gpu):
