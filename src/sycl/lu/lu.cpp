@@ -39,25 +39,8 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize, device dev) {
 
   for (size_t currentDiagonalIdx = 0; currentDiagonalIdx < matSize;
        currentDiagonalIdx += blockSize) {
-    // luSequential(diagonalBlock, blockSize, blockSize, matSize);
 
-    // if (matSize - currentDiagonalIdx <= blockSize) break;
-
-    // for (size_t k = 0; k < nCols && matrix[k * matrixSize + k] != 0; k++) {
-    //   size_t offsetK = k * matrixSize;
-
-    //   for (size_t i = k + 1; i < nRows; i++) {
-    //     matrix[i * matrixSize + k] /= matrix[offsetK + k];
-    //   }
-
-    //   for (size_t i = k + 1; i < nRows; i++) {
-    //     size_t offsetI = i * matrixSize;
-    //     for (size_t j = k + 1; j < nCols; j++) {
-    //       matrix[offsetI + j] -= matrix[offsetI + k] * matrix[offsetK + j];
-    //     }
-    //   }
-    // }
-
+    // Factorize A00
     Q.submit([&](handler& h) {
       auto matrixAcc = matrix.template get_access<access::mode::read_write>(h);
 
@@ -82,6 +65,7 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize, device dev) {
 
     size_t nBlocks = (matSize - currentDiagonalIdx - blockSize) / blockSize;
 
+    // Factorize A01
     Q.submit([&](handler& h) {
       auto matrixAcc = matrix.template get_access<access::mode::read_write>(h);
 
@@ -99,6 +83,7 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize, device dev) {
       });
     });
 
+    // Factorize A10
     Q.submit([&](handler& h) {
       auto matrixAcc = matrix.template get_access<access::mode::read_write>(h);
 
@@ -122,6 +107,7 @@ bool luFactorization(double* MA, size_t matSize, size_t blockSize, device dev) {
 
     size_t subMatrixSize = matSize - (blockSize + currentDiagonalIdx);
 
+    // Factorize A11
     Q.submit([&](handler& h) {
       auto matrixAcc = matrix.template get_access<access::mode::read_write>(h);
 
