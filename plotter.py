@@ -255,6 +255,66 @@ plt.ylim(bottom=0)
 plt.savefig(path.join(plots_dir, f'mm_sycl_gpu_time.png'))
 plt.cla()
 
+# LU Sycl CPU ----------------------------------------------------------------------------------------
+
+group_by = ['Matrix Size', 'Block Size'] 
+mean = lu_sycl_cpu_df[(lu_sycl_cpu_df['Op'] == 1)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Performance'],  '-x', color=color, label=f'Naive ({bs})')
+group_by = ['Matrix Size', 'Block Size'] 
+
+plt.legend(title='Operation')
+plt.ylabel('Performance (Gflop/s)')
+plt.xlabel('Matrix Size')
+plt.ylim(bottom=0)
+plt.savefig(path.join(plots_dir, f'lu_sycl_cpu_perf.png'))
+plt.cla()
+
+group_by = ['Matrix Size', 'Block Size'] 
+mean = lu_sycl_cpu_df[(lu_sycl_cpu_df['Op'] == 1)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Time'],  '-x', color=color, label=f'Blocked  ({bs})')
+
+plt.legend(title='Operation')
+plt.ylabel('Time (s)')
+plt.xlabel('Matrix Size')
+plt.ylim(bottom=0)
+plt.savefig(path.join(plots_dir, f'lu_sycl_cpu_time.png'))
+plt.cla()
+
+# MM Sycl GPU ----------------------------------------------------------------------------------------
+
+group_by = ['Matrix Size', 'Block Size'] 
+mean = lu_sycl_gpu_df[(lu_sycl_gpu_df['Op'] == 1)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Performance'],  '-x', color=color, label=f'Blocked ({bs})')
+
+plt.legend(title='Operation')
+plt.ylabel('Performance (Gflop/s)')
+plt.xlabel('Matrix Size')
+plt.ylim(bottom=0)
+plt.savefig(path.join(plots_dir, f'lu_sycl_gpu_perf.png'))
+plt.cla()
+
+group_by = ['Matrix Size', 'Block Size'] 
+mean = lu_sycl_gpu_df[(lu_sycl_gpu_df['Op'] == 1)].groupby(group_by, as_index=False).mean()
+
+for bs, color in zip([8, 16, 32], colors):
+  plot = mean[mean['Block Size'] == bs]
+  plt.plot(plot['Matrix Size'], plot['Time'],  '-x', color=color, label=f'Blocked  ({bs})')
+
+plt.legend(title='Operation')
+plt.ylabel('Time (s)')
+plt.xlabel('Matrix Size')
+plt.ylim(bottom=0)
+plt.savefig(path.join(plots_dir, f'lu_sycl_gpu_time.png'))
+plt.cla()
 
 
 
