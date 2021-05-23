@@ -88,7 +88,6 @@ def plotMMSpeedup(df, x, y, xlabel, ylabel, legendTitle, op, destName, perBlock=
 
     plt.ylabel(ylabel)
     plt.xlabel(xlabel)
-    plt.ylim(top=1)
     plt.ylim(bottom=0)
     plt.savefig(path.join(plots_dir, f'{destName}.png'))
     plt.cla()
@@ -111,12 +110,13 @@ def computeSpeedup(df, op):
     def speedup(row):
         time_mean = p1_mean.loc[(df['Op'] == op) & (p1_mean['Block Size'] == row['Block Size']) & (
             p1_mean['Matrix Size'] == row['Matrix Size'])]['Time'].values[0]
-        return row['Time']/time_mean
+        return time_mean/row['Time']
 
     return df.apply(speedup, axis=1)
 
 
 mm_omp_df['Speedup'] = computeSpeedup(mm_omp_df, 3)
+mm_omp_df['Efficiency'] = mm_omp_df['Speedup'] / mm_omp_df['P']
 
 
 plotMMSeq(mm_omp_df, 'Matrix Size', 'Speedup', 'Matrix Size',
@@ -124,6 +124,8 @@ plotMMSeq(mm_omp_df, 'Matrix Size', 'Speedup', 'Matrix Size',
 plotMMSpeedup(mm_omp_df, 'Matrix Size', 'Speedup', 'Matrix Size',
           'Speedup', 'Block Size (Num Proc.)', 3, 'mm_3_speedup')
 
+plotMMSpeedup(mm_omp_df, 'Matrix Size', 'Efficiency', 'Matrix Size',
+              'Efficiency', 'Block Size (Num Proc.)', 3, 'mm_3_efficiency')
 
 # LU Seq ----------------------------------------------------------------------------------------
 group_by = ['Matrix Size', 'Block Size']
@@ -320,3 +322,18 @@ plt.cla()
 
 
 
+lu_data_df['Speedup'] = computeSpeedup(lu_data_df, 3)
+lu_data_df['Efficiency'] = lu_data_df['Speedup'] / lu_data_df['P']
+lu_func_df['Speedup'] = computeSpeedup(lu_func_df, 4)
+lu_func_df['Efficiency'] = lu_func_df['Speedup'] / lu_func_df['P']
+
+
+plotMMSpeedup(lu_data_df, 'Matrix Size', 'Speedup', 'Matrix Size',
+              'Speedup', 'Block Size (Num Proc.)', 3, 'lu_3_speedup')
+plotMMSpeedup(lu_data_df, 'Matrix Size', 'Efficiency', 'Matrix Size',
+              'Efficiency', 'Block Size (Num Proc.)', 3, 'lu_3_efficiency')
+
+plotMMSpeedup(lu_func_df, 'Matrix Size', 'Speedup', 'Matrix Size',
+              'Speedup', 'Block Size (Num Proc.)', 4, 'lu_3_speedup')
+plotMMSpeedup(lu_func_df, 'Matrix Size', 'Efficiency', 'Matrix Size',
+              'Efficiency', 'Block Size (Num Proc.)', 4, 'lu_3_efficiency')
