@@ -1,4 +1,28 @@
-# CPAR Project 2
+# Repos name
+
+**2020/2021** - 4th Year, 2nd Semester
+
+**Course:** *Computação Paralela* ([CPAR](https://sigarra.up.pt/feup/pt/ucurr_geral.ficha_uc_view?pv_ocorrencia_id=350413)) | Parallel Computing
+
+**Authors:** David Silva ([daviddias99](https://github.com/daviddias99)), Luís Cunha ([luispcunha](https://github.com/luispcunha))
+
+---
+
+**Description:** For the second project we talked algorithm parallelization. To do this we utilized different algorithms: matrix multiplication and LU factorization. We utilized different frameworks to achieve parallelism: OpenMP (CPU), Sycl (CPU and GPU) and CUDA (baseline for GPU). We measured the performance of these algorithms for different matrix and block sizes.
+
+For info on the proposed work on `docs/specification.pdf` and on our results in `docs/report.pdf`.
+
+**Technologies:** C/C++, OpenMP, Sycl, CUDA
+
+**Skills:** Algorithm parallelization, algorithms, cache efficiency, matrix multiplication, blocking approach
+
+**Grade:** 18.4/20
+
+**Previous work:** [Link for the first project](https://github.com/daviddias99/matrix-multiplication-optimization-feup-cpar)
+
+---
+
+## Instructions
 
 This project uses OpenMP, CUDA and Sycl. For the Sycl implementation we mainly used ComputeCpp, however, due to the lack of support of CUDA devices we used the DPC++ implementation to compile the Sycl code for an Nvidia GTX 1060.
 
