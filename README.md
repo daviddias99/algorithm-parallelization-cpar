@@ -1,4 +1,4 @@
-# Repos name
+# Algorithm Parallelization CPAR
 
 **2020/2021** - 4th Year, 2nd Semester
 
